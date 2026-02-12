@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tower Defense</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="layout">
+    <aside class="panel">
+      <h1>Tower Defense</h1>
+      <p>Verteidige die Basis gegen die Wellen. Klicke auf ein Feld neben dem Weg, um einen Turm zu bauen.</p>
+      <div class="stats">
+        <div><strong>Gold:</strong> <span id="gold">0</span></div>
+        <div><strong>Leben:</strong> <span id="lives">0</span></div>
+        <div><strong>Welle:</strong> <span id="wave">0</span></div>
+        <div><strong>Score:</strong> <span id="score">0</span></div>
+      </div>
+      <button id="startWave">Nächste Welle starten</button>
+      <p class="hint">Turmkosten: 50 Gold · Reichweite: 95 · Schaden: 20 · Schussrate: 0,5s</p>
+      <p id="status">Bereit!</p>
+    </aside>
+    <section class="game-wrap">
+      <canvas id="game" width="800" height="480"></canvas>
+    </section>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
