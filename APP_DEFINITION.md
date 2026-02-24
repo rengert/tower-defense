@@ -34,6 +34,55 @@ Ein mobil-optimiertes Tower-Defense-Spiel, in dem Spieler:innen durch taktisches
 4. **Skill-Einsatz im richtigen Moment**
    - Aktive Fähigkeiten mit Cooldowns für kritische Spielsituationen
 
+## Turmtypen (MVP)
+1. **Pfeilturm (Single Target)**
+   - Rolle: günstiger Allrounder gegen Standardgegner
+   - Stärken: hohe Verfügbarkeit, solide Reichweite, verlässlicher Einzelziel-Schaden
+   - Schwächen: skaliert schlechter gegen stark gepanzerte Ziele
+2. **Kanonenturm (Splash/AoE)**
+   - Rolle: Flächenschaden gegen Gruppen
+   - Stärken: hoher Wert bei dichten Wellen, guter Wave-Clear
+   - Schwächen: langsame Schussrate, ineffizient gegen schnelle Einzelziele
+3. **Frostturm (Slow/Control)**
+   - Rolle: Gegner verlangsamen und Pfadkontrolle erhöhen
+   - Stärken: verlängert Time-to-Target, erhöht Effektivität anderer Türme
+   - Schwächen: geringer Direktschaden
+4. **Blitzturm (Burst/Chain)**
+   - Rolle: kurzer Burst mit Ketteneffekt auf nahe Gegner
+   - Stärken: stark gegen mittlere Gruppen und agile Ziele
+   - Schwächen: hohe Upgrade-Kosten, begrenzte Grundreichweite
+5. **Support-Turm (Buff/Debuff)**
+   - Rolle: benachbarte Türme verstärken oder Gegner schwächen
+   - Stärken: skaliert im Late-Game mit guter Platzierung
+   - Schwächen: indirekter Schaden, positionsabhängig
+
+## Upgrade-System je Turm
+- Jeder Turm besitzt **3 Upgrade-Stufen (T1 → T3)** plus eine Spezialisierung ab T3.
+- Standard-Upgrades erhöhen je nach Turm: Schaden, Reichweite, Schussrate, Effektstärke (z. B. Slow).
+- Ab T3 wird pro Turm ein **Pfad gewählt** (ein Pfad pro Run):
+
+### Beispielpfade pro Turm
+- **Pfeilturm**
+  - Pfad A „Scharfschütze“: mehr Reichweite + hoher Crit auf Einzelziele
+  - Pfad B „Schnellfeuer“: deutlich höhere Angriffsgeschwindigkeit, geringerer Treffer-Schaden
+- **Kanonenturm**
+  - Pfad A „Belagerung“: größerer Explosionsradius, stärker gegen schwere Gegner
+  - Pfad B „Splitterladung“: zusätzliche Splittertreffer, stärker gegen große Gruppen
+- **Frostturm**
+  - Pfad A „Permafrost“: stärkere Verlangsamung und längere Effektzeit
+  - Pfad B „Eisscherben“: zusätzlicher periodischer Schaden auf verlangsamte Ziele
+- **Blitzturm**
+  - Pfad A „Überladung“: höherer Burst und mehr Kettensprünge
+  - Pfad B „Leitnetz“: stabile DPS mit Chance auf kurzen Stun
+- **Support-Turm**
+  - Pfad A „Offensiv-Aura“: Buff für Schaden/Schussrate benachbarter Türme
+  - Pfad B „Störfeld“: Debuff auf Gegner (Rüstungsbruch/Resistenzsenkung)
+
+## Upgrade-Balancing (Leitplanken)
+- Kosten skalieren nichtlinear, damit frühe Entscheidungen relevant bleiben.
+- Utility-Türme (Frost/Support) dürfen DPS-Meta nicht dominieren, sondern Synergien schaffen.
+- Jeder Turmtyp soll mindestens eine klare Einsatznische pro Map/Enemy-Set haben.
+
 ## Progression
 - Kartenfortschritt mit steigender Komplexität
 - Freischaltbare Türme/Verbesserungen
