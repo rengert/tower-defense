@@ -6,6 +6,10 @@ Diese Version liefert ein lauffähiges Grundgerüst als mobile-first Hello-World
 1. Projekt in Godot 4.2+ öffnen.
 2. `main_menu.tscn` wird automatisch als Startszene geladen.
 
+## GitHub Pages
+- Landing Page liegt unter `pages/index.html`.
+- Deployment läuft automatisch über `.github/workflows/github-pages.yml` bei Push auf `main`.
+
 ## Enthalten
 - Basis-Projektkonfiguration für mobile Darstellung
 - UI-Startszene mit Safe-Area-Abständen
