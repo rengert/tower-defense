@@ -1,0 +1,44 @@
+name: Mobile CI
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Godot 4.2.2
+        run: |
+          GODOT_VERSION="4.2.2"
+          GODOT_ZIP="Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          GODOT_URL="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/${GODOT_ZIP}"
+
+          curl -L --fail "$GODOT_URL" -o "$GODOT_ZIP"
+          unzip -q "$GODOT_ZIP"
+          chmod +x "Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+          sudo mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
+
+      - name: Show Godot version
+        run: godot --version
+
+      - name: Run headless tests
+        run: godot --headless --path . --script res://tests/run_tests.gd
+
+  release-plan:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Explain release handoff
+        run: |
+          echo "Tag detected: $GITHUB_REF"
+          echo "Next step: run platform export jobs with signing secrets for Android and iOS."

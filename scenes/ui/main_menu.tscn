@@ -1,0 +1,50 @@
+[gd_scene format=3 uid="uid://7bwminawon8p"]
+
+[ext_resource type="Script" uid="uid://bstcyuuyi6m1e" path="res://scripts/ui/main_menu.gd" id="1_main"]
+
+[node name="MainMenu" type="Control" unique_id=656955348]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main")
+
+[node name="SafeAreaContainer" type="MarginContainer" parent="." unique_id=633554566]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 40.0
+offset_top = 80.0
+offset_right = -40.0
+offset_bottom = -80.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="SafeAreaContainer" unique_id=455409655]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 24
+
+[node name="TitleLabel" type="Label" parent="SafeAreaContainer/VBox" unique_id=1999046251]
+layout_mode = 2
+text = "Tower Defense"
+horizontal_alignment = 1
+
+[node name="HelloLabel" type="Label" parent="SafeAreaContainer/VBox" unique_id=1017183247]
+layout_mode = 2
+text = "Hello World"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="VersionLabel" type="Label" parent="SafeAreaContainer/VBox" unique_id=765569902]
+layout_mode = 2
+text = "v0.0.0"
+horizontal_alignment = 1
+
+[node name="StartButton" type="Button" parent="SafeAreaContainer/VBox" unique_id=2026104928]
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+text = "Start (MVP Placeholder)"
