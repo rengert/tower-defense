@@ -1,0 +1,35 @@
+name: Mobile CI
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Godot
+        run: |
+          sudo snap install godot --classic
+          godot --version
+
+      - name: Run headless tests
+        run: godot --headless --path . --script res://tests/run_tests.gd
+
+  release-plan:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Explain release handoff
+        run: |
+          echo "Tag detected: $GITHUB_REF"
+          echo "Next step: run platform export jobs with signing secrets for Android and iOS."
