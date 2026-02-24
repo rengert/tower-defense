@@ -9,7 +9,8 @@ Diese Version liefert ein lauffähiges Grundgerüst als mobile-first Hello-World
 ## GitHub Pages
 - Landing Page liegt unter `pages/index.html`.
 - Die eingebettete aktuelle Browser-Version liegt unter `pages/game/index.html`.
-- Deployment läuft automatisch über `.github/workflows/github-pages.yml` bei Push auf `main`.
+- Deployment läuft automatisch über `.github/workflows/github-pages.yml` bei Push auf `main` und `develop`.
+- GitHub Page: [https://rengert.github.io/tower-defense/](https://rengert.github.io/tower-defense/)
 
 ## Enthalten
 - Basis-Projektkonfiguration für mobile Darstellung
