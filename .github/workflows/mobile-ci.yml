@@ -13,10 +13,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Godot
-        run: |
-          sudo snap install godot --classic
-          godot --version
+      - name: Setup Godot 4.2.2
+        uses: firebelley/setup-godot@v1
+        with:
+          version: 4.2.2
+          install-templates: false
+
+      - name: Show Godot version
+        run: godot --version
 
       - name: Run headless tests
         run: godot --headless --path . --script res://tests/run_tests.gd
