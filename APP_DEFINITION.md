@@ -86,7 +86,48 @@ Ein mobil-optimiertes Tower-Defense-Spiel, in dem Spieler:innen durch taktisches
 ## Progression
 - Kartenfortschritt mit steigender Komplexität
 - Freischaltbare Türme/Verbesserungen
-- Meta-Fortschritt über wiederholte Runs (z. B. permanente Boni)
+- Meta-Fortschritt über wiederholte Runs
+
+## Meta-Fortschritt (präzise Definition)
+### 1) Kommandanten-Level (Accountweit)
+- Spieler:innen erhalten nach jedem Run **XP**, abhängig von überstandenen Wellen, Missionszielen und Schwierigkeitsgrad.
+- Jedes Level vergibt **1 Meta-Punkt** für den Talentbaum.
+- Level-Ups erhöhen keine direkte Kampfkraft ohne Talent-Investition (Transparenz im Balancing).
+
+### 2) Talentbaum (permanente Boni)
+- Drei Äste mit klaren Rollen:
+  - **Ökonomie:** Startgold, Bonus auf Wellenbelohnungen, günstigere Turm-Upgrades
+  - **Defense:** Basis-Lebenspunkte, Reparatur-Effizienz, Schadensreduktion auf Basis
+  - **Taktik:** Cooldown-Reduktion aktiver Skills, geringere Turmbaukosten bei bestimmten Klassen
+- Talente haben **3–5 Ränge** mit moderater Skalierung (keine Pay-to-Win-Spikes).
+- Respec ist möglich (z. B. gegen Soft Currency), damit Builds getestet werden können.
+
+### 3) Turm-Forschung (dauerhafte Freischaltungen)
+- Für jeden Turm existiert ein Forschungszweig mit:
+  - **Modul-Freischaltungen** (z. B. extra Projectile, erweiterter Slow-Effekt)
+  - **Qualitätsverbesserungen** (z. B. +X% Reichweite-Grundwert)
+- Forschung benötigt **Baupläne + Credits** aus Runs.
+- Forschung ist absichtlich langsamer als In-Run-Upgrades und bildet den Langzeit-Hook.
+
+### 4) Relikte/Perks (Run-startende Modifikatoren)
+- Vor dem Run kann 1 Relikt ausgerüstet werden (später 2 Slots freischaltbar).
+- Relikte verändern Regeln leicht (z. B. +AoE, -Single-Target-Schaden) und fördern Build-Vielfalt.
+- Relikte werden über Meilensteine, Boss-Kills oder Challenges freigeschaltet.
+
+### 5) Missions- und Meilenstein-System
+- **Tages-/Wochenziele:** liefern Credits, XP und gelegentlich Baupläne.
+- **Dauermeilensteine:** einmalige Belohnungen für klare Ziele (z. B. „Map 3 ohne Basis-Treffer“).
+- Dient als strukturierte Motivation ohne harte Pflicht-Login-Mechanik.
+
+### 6) Währungen
+- **Soft Currency (Credits):** Standard-Upgrades, Talent-Respec, Basis-Forschung.
+- **Hard Currency (optional, design-offen):** nur Komfort/Cosmetics oder Zeitsparer, nie exklusive Power.
+- **Baupläne/Forschungspunkte:** progression-spezifische Ressource für Turm-Forschung.
+
+### 7) Anti-Snowball-Leitplanken
+- Meta-Boni sind spürbar, aber begrenzt (Zielbereich: ca. 15–25 % Effizienzgewinn über Early→Mid-Progress).
+- Schwierigkeitsstufen und optionale Modifikatoren sorgen dafür, dass Skill und Strategie zentral bleiben.
+- Neue Inhalte werden auf „Fresh Account“ und „Mid-Progress Account“ gegengeprüft.
 
 ## UX- und Mobile-Anforderungen
 - Große, gut erreichbare Touch-Ziele
