@@ -8,6 +8,7 @@ Diese Version liefert ein lauffähiges Grundgerüst als mobile-first Hello-World
 
 ## GitHub Pages
 - Landing Page liegt unter `pages/index.html`.
+- Die eingebettete aktuelle Browser-Version liegt unter `pages/game/index.html`.
 - Deployment läuft automatisch über `.github/workflows/github-pages.yml` bei Push auf `main`.
 
 ## Enthalten
