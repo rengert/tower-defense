@@ -13,11 +13,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Godot 4.2.2
-        uses: firebelley/setup-godot@v1
-        with:
-          version: 4.2.2
-          install-templates: false
+      - name: Install Godot 4.2.2
+        run: |
+          GODOT_VERSION="4.2.2"
+          GODOT_ZIP="Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          GODOT_URL="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/${GODOT_ZIP}"
+
+          curl -L --fail "$GODOT_URL" -o "$GODOT_ZIP"
+          unzip -q "$GODOT_ZIP"
+          chmod +x "Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+          sudo mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
 
       - name: Show Godot version
         run: godot --version
