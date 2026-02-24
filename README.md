@@ -9,7 +9,7 @@ Diese Version liefert ein lauffähiges Grundgerüst als mobile-first Hello-World
 ## GitHub Pages
 - Landing Page liegt unter `pages/index.html`.
 - Die eingebettete Browser-Version liegt unter `pages/game/index.html`.
-- Deployment läuft automatisch über `.github/workflows/web-export-pages.yml` bei Push auf `main` oder manuell via `workflow_dispatch`.
+- Deployment läuft automatisch über `.github/workflows/github-pages.yml` bei Push auf `main` und `develop` oder manuell via `workflow_dispatch`.
 - Im Workflow wird vor dem Deploy ein frischer Godot-Web-Export erzeugt und nach `pages/game` geschrieben.
 
 ## Enthalten
