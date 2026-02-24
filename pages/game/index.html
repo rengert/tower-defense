@@ -3,98 +3,45 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Tower Defense – Aktuelle Web-Version</title>
-    <meta
-      name="description"
-      content="Aktuelle Browser-Version des Tower-Defense-Prototyps, synchron zum Main-Menu-Stand des Projekts."
-    />
+    <title>Tower Defense – Web Export</title>
     <style>
-      :root {
-        color-scheme: dark;
-        --bg: #050a18;
-        --panel: #101b38;
-        --panel-2: #182a54;
-        --text: #eef3ff;
-        --muted: #b9c6e8;
-        --accent: #7fe7cb;
-        --accent-press: #5ac4a8;
-      }
-
-      * { box-sizing: border-box; }
-
       body {
         margin: 0;
         min-height: 100vh;
         font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        background: radial-gradient(circle at top, #12244f 0%, var(--bg) 55%);
-        color: var(--text);
+        background: #050a18;
+        color: #eef3ff;
         display: grid;
         place-items: center;
-      }
-
-      .safe-area {
-        width: min(560px, 100%);
-        padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
-      }
-
-      .menu {
-        background: linear-gradient(180deg, var(--panel), var(--panel-2));
-        border: 1px solid #2a3c6b;
-        border-radius: 16px;
-        padding: 1.4rem;
         text-align: center;
+        padding: 1rem;
       }
 
-      h1 {
-        margin: 0;
-        font-size: clamp(1.7rem, 7vw, 2.3rem);
+      .card {
+        max-width: 680px;
+        border: 1px solid #2a3c6b;
+        border-radius: 14px;
+        padding: 1.2rem;
+        background: #101b38;
       }
 
-      .hello, .version {
-        margin-top: 0.8rem;
-        color: var(--muted);
-      }
-
-      .start {
-        margin-top: 1.3rem;
-        width: 100%;
-        min-height: 56px;
-        border: 0;
-        border-radius: 12px;
-        font-size: 1rem;
-        font-weight: 700;
-        cursor: pointer;
-        background: var(--accent);
-        color: #042117;
-      }
-
-      .start:active { background: var(--accent-press); }
-
-      .status {
-        margin-top: 0.8rem;
-        font-size: 0.95rem;
-        color: #c7ffe8;
-        min-height: 1.3rem;
+      a {
+        color: #7fe7cb;
       }
     </style>
   </head>
   <body>
-    <main class="safe-area">
-      <section class="menu" aria-label="Aktuelle Spielversion">
-        <h1>Tower Defense</h1>
-        <p class="hello">Hello World – Tower Defense Mobile Prototype</p>
-        <p class="version">v0.1.0-alpha</p>
-        <button class="start" id="startBtn" type="button">Start</button>
-        <p class="status" id="status" aria-live="polite"></p>
-      </section>
+    <main class="card">
+      <h1>Web-Export wird bereitgestellt…</h1>
+      <p>
+        Diese Datei dient als Fallback im Repository. Beim GitHub-Pages-Deploy wird sie automatisch
+        durch den echten Godot-HTML5-Export ersetzt.
+      </p>
+      <p>
+        Falls du diese Nachricht auf GitHub Pages siehst, prüfe den Workflow
+        <code>Web Export to GitHub Pages</code> und ob der Export erfolgreich war.
+      </p>
+      <p><a href="../index.html">Zurück zur Projektseite</a></p>
     </main>
-    <script>
-      const button = document.getElementById('startBtn');
-      const status = document.getElementById('status');
-
-      button.addEventListener('click', () => {
-        status.textContent = 'Start ausgelöst – Core-Loop folgt in den nächsten Iterationen.';
-      });
-    </script>
   </body>
 </html>
