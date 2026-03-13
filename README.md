@@ -1,24 +1,49 @@
-# Tower Defense – Hello World (Godot)
+# Tower Defense – Expo TypeScript (iOS & Android)
 
-Diese Version liefert ein lauffähiges Grundgerüst als mobile-first Hello-World-App in Godot.
+Ein mobil-optimiertes Tower-Defense-Spiel, entwickelt mit **Expo (React Native)** und **TypeScript** für iOS und Android.
+
+## Voraussetzungen
+
+- [Node.js](https://nodejs.org/) (LTS)
+- [Expo CLI](https://docs.expo.dev/get-started/installation/)
+
+```bash
+npm install -g expo-cli
+```
 
 ## Projekt starten
-1. Projekt in Godot 4.6 öffnen.
-2. `main_menu.tscn` wird automatisch als Startszene geladen.
 
-## GitHub Pages
-- Landing Page liegt unter `pages/index.html`.
-- Die eingebettete Browser-Version liegt unter `pages/game/index.html`.
-- Deployment läuft automatisch über `.github/workflows/github-pages.yml` bei Push auf `main` und `develop` oder manuell via `workflow_dispatch`.
-- Im Workflow wird vor dem Deploy ein frischer Godot-Web-Export erzeugt und nach `pages/game` geschrieben.
+```bash
+npm install
+npm start        # Expo Dev Server starten
+npm run android  # Android (Emulator oder Gerät)
+npm run ios      # iOS (nur macOS mit Xcode)
+npm run web      # Web-Vorschau im Browser
+```
 
-## Enthalten
-- Basis-Projektkonfiguration für mobile Darstellung
-- UI-Startszene mit Safe-Area-Abständen
-- Web-Export-Preset (`export_presets.cfg`) für GitHub Pages
-- Minimaler Test-Runner für Kernkonstanten
+## Projektstruktur
 
-Weiterführende Details:
+```text
+.
+├── App.tsx              # Haupt-App-Komponente
+├── index.ts             # Einstiegspunkt (registerRootComponent)
+├── app.json             # Expo-Konfiguration (iOS, Android, Splash)
+├── tsconfig.json        # TypeScript-Konfiguration
+├── assets/              # Icons, Splash-Screen, Bilder
+├── docs/                # Prozess- und Architektur-Dokumentation
+└── package.json
+```
+
+## Plattform-Unterstützung
+
+| Plattform | Status  |
+|-----------|---------|
+| iOS       | ✅      |
+| Android   | ✅      |
+| Web       | ✅      |
+
+## Weiterführende Dokumentation
+
 - `docs/PROJECT_STRUCTURE.md`
 - `docs/TESTING.md`
 - `docs/DEPLOYMENT.md`

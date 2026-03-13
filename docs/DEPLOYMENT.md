@@ -6,26 +6,32 @@
 
 ## Pipeline-Stufen
 1. **Validate**
-   - Unit-Tests headless laufen.
+   - TypeScript-Kompilierung (`npx tsc --noEmit`).
 2. **Build-Check**
-   - Android-Export im CI (Debug/Release-Template je nach Secrets).
-   - iOS-Export als Projekt-/Xcode-Artefakt zur Weiterverarbeitung.
+   - Android-Build via `eas build --platform android`.
+   - iOS-Build via `eas build --platform ios`.
 3. **Release**
    - Tags (`v*`) triggern Release-Job.
-   - Artefakte werden bereitgestellt (APK/AAB, iOS Export-Bundle).
+   - Artefakte: APK/AAB (Android) und IPA (iOS) via EAS Build.
 
 ## Manuelle Release-Checkliste
-1. Start, Menü, Touch-Bedienung prüfen.
-2. Performance-Baseline auf Mid-Range-Geräten prüfen.
-3. Store-Metadaten, Privacy-Formulare und Berechtigungen abgleichen.
-4. Signierte Builds in App Store Connect / Play Console hochladen.
+1. `npm start` starten und auf Emulator/Gerät prüfen.
+2. Touch-Bedienung und Orientierung testen.
+3. Performance-Baseline auf Mid-Range-Geräten prüfen.
+4. Store-Metadaten, Privacy-Formulare und Berechtigungen abgleichen.
+5. Signierten Build in App Store Connect / Play Console hochladen.
 
-## GitHub Pages (Web-Export)
-1. Workflow **Deploy GitHub Pages** wird bei Push auf `main` und `develop` oder manuell gestartet.
-2. CI exportiert das Godot-Projekt als HTML5-Build nach `pages/game`.
-3. Anschließend wird der Inhalt von `pages/` als GitHub-Pages-Artefakt deployed.
-4. Landing Page: `pages/index.html`, eingebettete Spielversion: `pages/game/index.html`.
+## EAS Build Setup
+
+```bash
+npm install -g eas-cli
+eas login
+eas build:configure
+eas build --platform all
+```
 
 ## Hinweise
+- Bundle-ID (iOS): `com.rengert.towerdefense`
+- Package (Android): `com.rengert.towerdefense`
 - Signaturdaten und Store-Credentials ausschließlich über CI-Secrets verwalten.
-- Keine zusätzlichen Berechtigungen ohne Produkt- und Privacy-Freigabe einführen.
+- Keine zusätzlichen Permissions ohne Produkt- und Privacy-Freigabe einführen.
