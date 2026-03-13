@@ -4,19 +4,16 @@
 .
 ├── .github/workflows/          # CI/CD-Pipelines
 ├── docs/                       # Prozess- und Architektur-Dokumentation
-├── scenes/
-│   └── ui/                     # UI-Szenen (Start, HUD, Menüs)
-├── scripts/
-│   ├── core/                   # Globale Konstanten und Basislogik
-│   └── ui/                     # UI-spezifische Logik
-├── tests/
-│   ├── run_tests.gd            # Headless Test-Runner
-│   └── unit/                   # Unit-Tests
-├── project.godot               # Godot-Projektkonfiguration
+├── assets/                     # Icons, Splash-Screen, Bilder
+├── App.tsx                     # Haupt-App-Komponente (Startbildschirm)
+├── index.ts                    # Einstiegspunkt (registerRootComponent)
+├── app.json                    # Expo-Konfiguration (iOS, Android, Web)
+├── tsconfig.json               # TypeScript-Konfiguration
+├── package.json                # Abhängigkeiten und Scripts
 └── README.md
 ```
 
 ## Strukturprinzipien
-- Feature-orientierte Trennung zwischen `scenes` und `scripts`.
-- Mobile-relevante UI in `scenes/ui` gebündelt.
-- Tests liegen separat unter `tests`, damit sie in CI headless ausführbar sind.
+- Expo-Standard-Layout für React Native mit TypeScript.
+- Mobile-relevante UI wird zentral in `App.tsx` gestartet.
+- Assets (Icons, Splash) liegen unter `assets/` und werden von Expo automatisch verarbeitet.
