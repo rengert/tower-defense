@@ -1,10 +1,9 @@
 /**
  * PixiGameRenderer (legacy name)
  *
- * Native-safe renderer implemented with React Native Skia.
+ * Fallback renderer implemented with plain React Native Views.
  * Keeps the same public API so GameScreen does not need to change.
  */
-import { Canvas, Circle, Line, Rect, RoundedRect } from '@shopify/react-native-skia';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
 import {
@@ -101,7 +100,7 @@ export default function PixiGameRenderer({
 
     if (__DEV__) {
       // eslint-disable-next-line no-console
-      console.info('[PixiGameRenderer] Skia renderer ready');
+      console.info('[PixiGameRenderer] RN fallback renderer ready');
     }
     emitDiagnostics({ glReady: true, rendererReady: true, lastError: null });
 
@@ -207,52 +206,24 @@ export default function PixiGameRenderer({
 
   return (
     <View style={styles.container} onLayout={handleLayout}>
-      <Canvas style={StyleSheet.absoluteFill}>
-        <Rect x={0} y={0} width={dims.width} height={dims.height} color={C.bg} />
-
+      <View style={StyleSheet.absoluteFill}>
         {cells.map((cell) => (
-          <React.Fragment key={cell.key}>
-            <Rect
-              x={cell.x}
-              y={cell.y}
-              width={dims.cellW}
-              height={dims.cellH}
-              color={cell.color}
-            />
-            <Rect
-              x={cell.x}
-              y={cell.y}
-              width={dims.cellW}
-              height={dims.cellH}
-              color={C.gridLine}
-              style="stroke"
-              strokeWidth={0.5}
-            />
-          </React.Fragment>
+          <View
+            key={cell.key}
+            pointerEvents="none"
+            style={[
+              styles.cell,
+              {
+                left: cell.x,
+                top: cell.y,
+                width: dims.cellW,
+                height: dims.cellH,
+                backgroundColor: cell.color,
+                borderColor: C.gridLine,
+              },
+            ]}
+          />
         ))}
-
-        {Array.from({ length: GRID_COLS - 2 }).map((_, i) => {
-          const c = i + 1;
-          if (c % 2 === 0) return null;
-          const arrowY = PATH_ROW * dims.cellH + dims.cellH / 2;
-          const ax = c * dims.cellW + dims.cellW * 0.3;
-          return (
-            <React.Fragment key={`arrow-${c}`}>
-              <Line
-                p1={{ x: ax, y: arrowY - dims.cellH * 0.15 }}
-                p2={{ x: ax + dims.cellW * 0.3, y: arrowY }}
-                color={C.pathArrow}
-                strokeWidth={1}
-              />
-              <Line
-                p1={{ x: ax + dims.cellW * 0.3, y: arrowY }}
-                p2={{ x: ax, y: arrowY + dims.cellH * 0.15 }}
-                color={C.pathArrow}
-                strokeWidth={1}
-              />
-            </React.Fragment>
-          );
-        })}
 
         {state.towers.map((tower) => {
           const cx = tower.col * dims.cellW + dims.cellW / 2;
@@ -260,19 +231,34 @@ export default function PixiGameRenderer({
           const r = Math.min(dims.cellW, dims.cellH) * 0.35;
           return (
             <React.Fragment key={`tower-${tower.id}`}>
-              <Circle cx={cx} cy={cy} r={r} color={C.tower} />
-              <Circle cx={cx} cy={cy} r={r * 0.45} color={C.towerAccent} />
-              {buildMode && (
-                <Circle
-                  cx={cx}
-                  cy={cy}
-                  r={TOWER_RANGE * dims.cellW}
-                  color={C.towerRange}
-                  style="stroke"
-                  strokeWidth={1}
-                  opacity={0.3}
-                />
-              )}
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.tower,
+                  {
+                    left: cx - r,
+                    top: cy - r,
+                    width: r * 2,
+                    height: r * 2,
+                    borderRadius: r,
+                    backgroundColor: C.tower,
+                  },
+                ]}
+              />
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.tower,
+                  {
+                    left: cx - r * 0.45,
+                    top: cy - r * 0.45,
+                    width: r * 0.9,
+                    height: r * 0.9,
+                    borderRadius: r * 0.45,
+                    backgroundColor: C.towerAccent,
+                  },
+                ]}
+              />
             </React.Fragment>
           );
         })}
@@ -286,27 +272,49 @@ export default function PixiGameRenderer({
           const x = enemy.col * dims.cellW + padding;
           const w = dims.cellW - padding * 2;
           const hpRatio = Math.max(0, enemy.health / enemy.maxHealth);
-          const hpColor =
-            hpRatio > 0.5 ? C.hpFull : hpRatio > 0.25 ? C.hpLow : C.hpEmpty;
+          const hpColor = hpRatio > 0.5 ? C.hpFull : hpRatio > 0.25 ? C.hpLow : C.hpEmpty;
 
           return (
             <React.Fragment key={`enemy-${enemy.id}`}>
-              <RoundedRect x={x} y={pathY + padding} width={w} height={enemyH} r={2} color={C.enemy} />
-              <RoundedRect x={x} y={hpBarY} width={w} height={hpBarH} r={2} color="#333333" />
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.enemy,
+                  {
+                    left: x,
+                    top: pathY + padding,
+                    width: w,
+                    height: enemyH,
+                    backgroundColor: C.enemy,
+                  },
+                ]}
+              />
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.hpBar,
+                  { left: x, top: hpBarY, width: w, height: hpBarH, backgroundColor: '#333333' },
+                ]}
+              />
               {hpRatio > 0 && (
-                <RoundedRect
-                  x={x}
-                  y={hpBarY}
-                  width={w * hpRatio}
-                  height={hpBarH}
-                  r={2}
-                  color={hpColor}
+                <View
+                  pointerEvents="none"
+                  style={[
+                    styles.hpBar,
+                    {
+                      left: x,
+                      top: hpBarY,
+                      width: w * hpRatio,
+                      height: hpBarH,
+                      backgroundColor: hpColor,
+                    },
+                  ]}
                 />
               )}
             </React.Fragment>
           );
         })}
-      </Canvas>
+      </View>
 
       <Pressable style={StyleSheet.absoluteFill} onPress={handleTouch} />
     </View>
@@ -317,5 +325,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0a0a1a',
+  },
+  cell: {
+    position: 'absolute',
+    borderWidth: 0.5,
+  },
+  tower: {
+    position: 'absolute',
+  },
+  enemy: {
+    position: 'absolute',
+    borderRadius: 2,
+  },
+  hpBar: {
+    position: 'absolute',
+    borderRadius: 2,
   },
 });
