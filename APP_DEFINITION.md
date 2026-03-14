@@ -17,7 +17,7 @@ Ein mobil-optimiertes Tower-Defense-Spiel, in dem Spieler:innen durch taktisches
 
 ## Zielplattformen
 - **Primär:** iOS (App Store), Android (Google Play)
-- **Engine:** Godot
+- **Engine:** React Native mit PixieJs für die Gameplay-Logik und -Grafiken
 - **Steuerung:** Vollständig Touch-basiert
 
 ## Zielgruppe
