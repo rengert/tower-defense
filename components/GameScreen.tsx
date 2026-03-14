@@ -1,92 +1,94 @@
-import React, { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import PixiGameRenderer from './PixiGameRenderer';
 import PauseMenuScreen from './PauseMenuScreen';
-import { GRID_COLS, GRID_ROWS, PATH_ROW, TICK_MS, TOTAL_WAVES, TOWER_COST } from './game/constants';
-import { canPlaceTower, createInitialState, placeTower, tickGame } from './game/logic';
+import { TOTAL_WAVES, TOWER_COST } from './game/constants';
+import { createInitialState, placeTower, tickGame } from './game/logic';
 import type { GameState, GameStatus } from './game/types';
 
 interface Props {
   onQuitToMenu: () => void;
 }
 
-const SCREEN_WIDTH = Dimensions.get('window').width || 375;
-const CELL_SIZE = Math.max(10, Math.floor(SCREEN_WIDTH / GRID_COLS));
-const BOARD_WIDTH = CELL_SIZE * GRID_COLS;
-const BOARD_HEIGHT = CELL_SIZE * GRID_ROWS;
-
 export default function GameScreen({ onQuitToMenu }: Props) {
   const [paused, setPaused] = useState(false);
   const [buildMode, setBuildMode] = useState(false);
+
+  // ── Shared game state ──────────────────────────────────────────────────────
+  // Game state lives in a ref so the PixiJS ticker can read it without causing
+  // React re-renders on every frame. HUD-visible values are mirrored into React
+  // state and updated whenever they change.
+  const gameRef = useRef<GameState>(createInitialState());
+  const [hudGold, setHudGold] = useState(gameRef.current.gold);
+  const [hudLives, setHudLives] = useState(gameRef.current.lives);
+  const [hudWave, setHudWave] = useState(gameRef.current.wave);
   const [gameStatus, setGameStatus] = useState<GameStatus>('playing');
 
-  const gameRef = useRef<GameState>(createInitialState());
-  // Increment to trigger a re-render without moving all game state to React.
-  const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
 
-  // ── Game loop ─────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (paused || gameStatus !== 'playing') return;
+  // ── HUD sync helper ────────────────────────────────────────────────────────
+  // Only updates the React state values that actually changed to avoid excess renders.
+  const syncHudState = useCallback(
+    (prev: GameState, next: GameState) => {
+      if (next.gold !== prev.gold) setHudGold(next.gold);
+      if (next.lives !== prev.lives) setHudLives(next.lives);
+      if (next.wave !== prev.wave) setHudWave(next.wave);
+      if (next.status !== prev.status) setGameStatus(next.status);
+    },
+    []
+  );
 
-    const id = setInterval(() => {
-      const next = tickGame(gameRef.current);
+  // ── Game tick (called by PixiGameRenderer on every animation frame) ────────
+  const handleTick = useCallback(
+    (dtMs: number) => {
+      if (pausedRef.current) return;
+      const prev = gameRef.current;
+      const next = tickGame(prev, dtMs);
       gameRef.current = next;
-      if (next.status !== 'playing') {
-        setGameStatus(next.status);
-      } else {
-        forceUpdate();
-      }
-    }, TICK_MS);
+      syncHudState(prev, next);
+    },
+    [syncHudState]
+  );
 
-    return () => clearInterval(id);
-  }, [paused, gameStatus]);
-
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  // ── Tower placement ───────────────────────────────────────────────────────
   const handleCellPress = useCallback(
     (row: number, col: number) => {
       if (!buildMode || gameRef.current.status !== 'playing') return;
-      const next = placeTower(gameRef.current, row, col);
-      if (next !== gameRef.current) {
+      const prev = gameRef.current;
+      const next = placeTower(prev, row, col);
+      if (next !== prev) {
         gameRef.current = next;
         setBuildMode(false);
-        forceUpdate();
+        syncHudState(prev, next);
       }
     },
-    [buildMode]
+    [buildMode, syncHudState]
   );
 
+  // ── Restart ───────────────────────────────────────────────────────────────
   const handleRestart = useCallback(() => {
-    gameRef.current = createInitialState();
+    const prev = gameRef.current;
+    const fresh = createInitialState();
+    gameRef.current = fresh;
     setBuildMode(false);
-    setGameStatus('playing');
-  }, []);
+    syncHudState(prev, fresh);
+  }, [syncHudState]);
 
-  // ── Rendering helpers ─────────────────────────────────────────────────────
-  const game = gameRef.current;
-
-  // O(1) tower position lookup — recomputed once per render, not per cell.
-  const towerPositions = new Set(
-    game.towers.map((t) => `${t.row},${t.col}`)
-  );
-
-  const getCellBg = (row: number, col: number): string => {
-    if (row === PATH_ROW) return '#5a4a3a';
-    if (towerPositions.has(`${row},${col}`)) return '#1a3a2e';
-    if (buildMode && canPlaceTower(game, row, col)) return '#1e3a28';
-    return '#1e2d3d';
-  };
+  const isPlaying = gameStatus === 'playing';
 
   return (
     <View style={styles.container}>
-      {/* ── Header HUD ─────────────────────────────────────────────────── */}
+      {/* ── Header HUD ──────────────────────────────────────────────────── */}
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <Text style={styles.waveText}>
-            Wave {game.wave}/{TOTAL_WAVES}
+            Wave {hudWave}/{TOTAL_WAVES}
           </Text>
           <View style={styles.statsRow}>
-            <Text style={styles.stat}>❤️ {game.lives}</Text>
-            <Text style={styles.stat}>💰 {game.gold}</Text>
+            <Text style={styles.stat}>❤️ {hudLives}</Text>
+            <Text style={styles.stat}>💰 {hudGold}</Text>
           </View>
           <TouchableOpacity
             style={styles.pauseButton}
@@ -99,89 +101,16 @@ export default function GameScreen({ onQuitToMenu }: Props) {
         </View>
       </SafeAreaView>
 
-      {/* ── Game Board ─────────────────────────────────────────────────── */}
-      <View style={styles.boardWrapper}>
-        <View
-          style={[
-            styles.board,
-            { width: BOARD_WIDTH, height: BOARD_HEIGHT },
-          ]}
-        >
-          {/* Grid cells */}
-          {Array.from({ length: GRID_ROWS }, (_, row) => (
-            <View
-              key={row}
-              style={[styles.gridRow, { top: row * CELL_SIZE }]}
-            >
-              {Array.from({ length: GRID_COLS }, (_, col) => (
-                <TouchableOpacity
-                  key={col}
-                  style={[
-                    styles.cell,
-                    {
-                      width: CELL_SIZE,
-                      height: CELL_SIZE,
-                      backgroundColor: getCellBg(row, col),
-                    },
-                  ]}
-                  onPress={() => handleCellPress(row, col)}
-                  activeOpacity={
-                    buildMode && row !== PATH_ROW ? 0.6 : 1
-                  }
-                  accessibilityLabel={`Cell row ${row} col ${col}`}
-                >
-                  {towerPositions.has(`${row},${col}`) && (
-                    <Text
-                      style={{ fontSize: CELL_SIZE * 0.55, lineHeight: CELL_SIZE }}
-                    >
-                      🗼
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          ))}
+      {/* ── PixiJS game board ────────────────────────────────────────────── */}
+      <PixiGameRenderer
+        onTick={handleTick}
+        onCellPress={handleCellPress}
+        gameStateRef={gameRef}
+        running={isPlaying && !paused}
+        buildMode={buildMode}
+      />
 
-          {/* Enemies (absolute overlay) */}
-          {game.enemies.map((enemy) => (
-            <View
-              key={enemy.id}
-              style={[
-                styles.enemy,
-                {
-                  left: enemy.col * CELL_SIZE + CELL_SIZE * 0.1,
-                  top: PATH_ROW * CELL_SIZE + CELL_SIZE * 0.1,
-                  width: CELL_SIZE * 0.8,
-                  height: CELL_SIZE * 0.8,
-                },
-              ]}
-            >
-              <View
-                style={[
-                  styles.enemyBody,
-                  { width: CELL_SIZE * 0.8, height: CELL_SIZE * 0.55 },
-                ]}
-              />
-              {/* Health bar */}
-              <View style={[styles.hpBarBg, { width: CELL_SIZE * 0.8 }]}>
-                <View
-                  style={[
-                    styles.hpBarFg,
-                    {
-                      width:
-                        CELL_SIZE *
-                        0.8 *
-                        Math.max(0, enemy.health / enemy.maxHealth),
-                    },
-                  ]}
-                />
-              </View>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* ── Footer – Build Controls ─────────────────────────────────────── */}
+      {/* ── Footer – Build Controls ──────────────────────────────────────── */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.buildBtn, buildMode && styles.buildBtnActive]}
@@ -195,7 +124,7 @@ export default function GameScreen({ onQuitToMenu }: Props) {
         </TouchableOpacity>
       </View>
 
-      {/* ── Pause Menu ─────────────────────────────────────────────────── */}
+      {/* ── Pause Menu ───────────────────────────────────────────────────── */}
       {paused && (
         <PauseMenuScreen
           onResume={() => setPaused(false)}
@@ -203,15 +132,15 @@ export default function GameScreen({ onQuitToMenu }: Props) {
         />
       )}
 
-      {/* ── Victory overlay ────────────────────────────────────────────── */}
-      {game.status === 'won' && (
+      {/* ── Victory overlay ─────────────────────────────────────────────── */}
+      {gameStatus === 'won' && (
         <View style={styles.overlay}>
           <View style={styles.panel}>
             <Text style={styles.panelTitle}>🏆 You Win!</Text>
             <Text style={styles.panelStat}>
-              Enemies defeated: {game.enemiesKilled}
+              Enemies defeated: {gameRef.current.enemiesKilled}
             </Text>
-            <Text style={styles.panelStat}>Gold remaining: {game.gold}</Text>
+            <Text style={styles.panelStat}>Gold remaining: {hudGold}</Text>
             <TouchableOpacity
               style={styles.panelBtn}
               onPress={handleRestart}
@@ -232,16 +161,16 @@ export default function GameScreen({ onQuitToMenu }: Props) {
         </View>
       )}
 
-      {/* ── Defeat overlay ─────────────────────────────────────────────── */}
-      {game.status === 'lost' && (
+      {/* ── Defeat overlay ──────────────────────────────────────────────── */}
+      {gameStatus === 'lost' && (
         <View style={styles.overlay}>
           <View style={styles.panel}>
             <Text style={styles.panelTitle}>💀 Game Over</Text>
             <Text style={styles.panelStat}>
-              Enemies defeated: {game.enemiesKilled}
+              Enemies defeated: {gameRef.current.enemiesKilled}
             </Text>
             <Text style={styles.panelStat}>
-              Waves survived: {game.wave}/{TOTAL_WAVES}
+              Waves survived: {hudWave}/{TOTAL_WAVES}
             </Text>
             <TouchableOpacity
               style={styles.panelBtn}
@@ -287,45 +216,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   pauseButtonText: { fontSize: 14, fontWeight: 'bold', color: '#0a0a1a' },
-
-  boardWrapper: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0a0a1a',
-  },
-  board: {
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  gridRow: {
-    position: 'absolute',
-    flexDirection: 'row',
-    left: 0,
-  },
-  cell: {
-    borderWidth: 0.5,
-    borderColor: '#0a0a2a',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  enemy: { position: 'absolute' },
-  enemyBody: {
-    backgroundColor: '#e04040',
-    borderRadius: 3,
-  },
-  hpBarBg: {
-    height: 4,
-    backgroundColor: '#333',
-    borderRadius: 2,
-    marginTop: 2,
-  },
-  hpBarFg: {
-    height: 4,
-    backgroundColor: '#40e040',
-    borderRadius: 2,
-  },
 
   footer: {
     padding: 12,

@@ -4,6 +4,7 @@ export const PATH_ROW = 4;
 
 export const TICK_MS = 100;
 export const ENEMY_SPEED = 0.5; // cells per second
+/** Pre-computed speed for a single fixed TICK_MS step (used in unit tests). */
 export const ENEMY_SPEED_PER_TICK = (ENEMY_SPEED * TICK_MS) / 1000;
 
 export const STARTING_GOLD = 150;

@@ -56,7 +56,7 @@ describe('tickGame', () => {
     expect(next.enemiesSpawned).toBe(1);
   });
 
-  it('does not spawn more enemies than ENEMIES_PER_WAVE * wave', () => {
+  it('does not spawn more enemies than ENEMIES_PER_WAVE per wave', () => {
     let state = createInitialState();
     // Force elapsedMs past multiple spawn intervals
     for (let i = 0; i < ENEMIES_PER_WAVE * 3; i++) {
@@ -172,7 +172,7 @@ describe('tickGame', () => {
     const state: GameState = {
       ...createInitialState(),
       enemies: [],
-      enemiesSpawned: ENEMIES_PER_WAVE * TOTAL_WAVES,
+      enemiesSpawned: ENEMIES_PER_WAVE, // all enemies of the last wave defeated
       wave: TOTAL_WAVES,
     };
     const next = tickGame(state);

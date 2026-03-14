@@ -3,6 +3,11 @@ import React from 'react';
 import App from '../App';
 import { STARTING_GOLD, STARTING_LIVES, TOWER_COST } from '../components/game/constants';
 
+// PixiGameRenderer uses expo-gl / pixi.js (WebGL) which is unavailable in Jest.
+// The manual mock at components/__mocks__/PixiGameRenderer.tsx replaces it with
+// a lightweight View that exposes an "Cell row 0 col 0" touch target for tests.
+jest.mock('../components/PixiGameRenderer');
+
 describe('App', () => {
   beforeEach(() => {
     jest.useFakeTimers();

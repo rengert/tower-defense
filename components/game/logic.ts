@@ -2,7 +2,7 @@ import {
   ENEMY_BASE_HEALTH,
   ENEMY_GOLD_REWARD,
   ENEMY_HEALTH_SCALE_PER_WAVE,
-  ENEMY_SPEED_PER_TICK,
+  ENEMY_SPEED,
   ENEMIES_PER_WAVE,
   GRID_COLS,
   PATH_ROW,
@@ -37,8 +37,15 @@ export function createInitialState(): GameState {
   };
 }
 
-/** Pure function: advance game state by one TICK_MS step. */
-export function tickGame(prev: GameState): GameState {
+/**
+ * Pure function: advance game state by one time step.
+ *
+ * @param prev  - Current game state.
+ * @param dtMs  - Elapsed time in milliseconds since the last tick.
+ *                Defaults to TICK_MS (100 ms) for backwards-compatibility
+ *                with unit tests that call tickGame without a dt argument.
+ */
+export function tickGame(prev: GameState, dtMs: number = TICK_MS): GameState {
   if (prev.status !== 'playing') return prev;
 
   let enemies: Enemy[] = [...prev.enemies];
@@ -56,12 +63,12 @@ export function tickGame(prev: GameState): GameState {
     nextTowerId,
   } = prev;
 
-  elapsedMs += TICK_MS;
+  elapsedMs += dtMs;
 
   // ── Spawn ────────────────────────────────────────────────────────────────
-  const totalThisWave = wave * ENEMIES_PER_WAVE;
+  // Flat ENEMIES_PER_WAVE enemies per wave (not scaled by wave index).
   if (
-    enemiesSpawned < totalThisWave &&
+    enemiesSpawned < ENEMIES_PER_WAVE &&
     elapsedMs - lastSpawnMs >= SPAWN_INTERVAL_MS
   ) {
     const health = ENEMY_BASE_HEALTH + (wave - 1) * ENEMY_HEALTH_SCALE_PER_WAVE;
@@ -74,7 +81,8 @@ export function tickGame(prev: GameState): GameState {
   }
 
   // ── Move enemies ─────────────────────────────────────────────────────────
-  enemies = enemies.map((e) => ({ ...e, col: e.col + ENEMY_SPEED_PER_TICK }));
+  const colsPerMs = ENEMY_SPEED / 1000;
+  enemies = enemies.map((e) => ({ ...e, col: e.col + colsPerMs * dtMs }));
 
   // ── Enemies reaching the exit ─────────────────────────────────────────────
   let livesLost = 0;
@@ -92,7 +100,7 @@ export function tickGame(prev: GameState): GameState {
   let goldEarned = 0;
 
   towers = towers.map((tower): Tower => {
-    const remainingCooldown = tower.cooldownMs - TICK_MS;
+    const remainingCooldown = tower.cooldownMs - dtMs;
     if (remainingCooldown > 0) {
       return { ...tower, cooldownMs: remainingCooldown };
     }
@@ -133,8 +141,7 @@ export function tickGame(prev: GameState): GameState {
   gold += goldEarned;
 
   // ── Wave transition ───────────────────────────────────────────────────────
-  const waveComplete =
-    enemiesSpawned >= totalThisWave && enemies.length === 0;
+  const waveComplete = enemiesSpawned >= ENEMIES_PER_WAVE && enemies.length === 0;
 
   if (waveComplete) {
     if (wave >= TOTAL_WAVES) {
