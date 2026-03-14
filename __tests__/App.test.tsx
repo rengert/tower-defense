@@ -8,6 +8,24 @@ import { STARTING_GOLD, STARTING_LIVES, TOWER_COST } from '../components/game/co
 // a lightweight View that exposes an "Cell row 0 col 0" touch target for tests.
 jest.mock('../components/PixiGameRenderer');
 
+jest.mock('react-native-safe-area-context', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+
+  return {
+    SafeAreaProvider: ({ children }: { children: React.ReactNode }) => (
+      <View>{children}</View>
+    ),
+    SafeAreaView: ({ children }: { children: React.ReactNode }) => (
+      <View>{children}</View>
+    ),
+  };
+});
+
+jest.mock('expo-status-bar', () => ({
+  StatusBar: () => null,
+}));
+
 describe('App', () => {
   beforeEach(() => {
     jest.useFakeTimers();

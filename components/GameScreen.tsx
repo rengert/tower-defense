@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import PixiGameRenderer from './PixiGameRenderer';
+import PixiGameRenderer, { type RenderDiagnostics } from './PixiGameRenderer';
 import PauseMenuScreen from './PauseMenuScreen';
 import { TOTAL_WAVES, TOWER_COST } from './game/constants';
 import { createInitialState, placeTower, tickGame } from './game/logic';
@@ -24,6 +24,13 @@ export default function GameScreen({ onQuitToMenu }: Props) {
   const [hudLives, setHudLives] = useState(gameRef.current.lives);
   const [hudWave, setHudWave] = useState(gameRef.current.wave);
   const [gameStatus, setGameStatus] = useState<GameStatus>('playing');
+  const [renderDiagnostics, setRenderDiagnostics] = useState<RenderDiagnostics>({
+    glReady: false,
+    rendererReady: false,
+    frameCount: 0,
+    lastFrameMs: null,
+    lastError: null,
+  });
 
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
@@ -108,7 +115,21 @@ export default function GameScreen({ onQuitToMenu }: Props) {
         gameStateRef={gameRef}
         running={isPlaying && !paused}
         buildMode={buildMode}
+        onDiagnosticsChange={setRenderDiagnostics}
       />
+
+      {__DEV__ && (
+        <View style={styles.debugBadge} pointerEvents="none">
+          <Text style={styles.debugText}>
+            GL:{renderDiagnostics.glReady ? 'OK' : '...'} R:{renderDiagnostics.rendererReady ? 'OK' : '...'} F:{renderDiagnostics.frameCount}
+          </Text>
+          {renderDiagnostics.lastError && (
+            <Text style={styles.debugError} numberOfLines={1}>
+              ERR: {renderDiagnostics.lastError}
+            </Text>
+          )}
+        </View>
+      )}
 
       {/* ── Footer – Build Controls ──────────────────────────────────────── */}
       <View style={styles.footer}>
@@ -283,4 +304,26 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   panelBtnSecondaryText: { fontSize: 16, color: '#a0b8d0' },
+  debugBadge: {
+    position: 'absolute',
+    left: 8,
+    top: 68,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    borderColor: '#4b5f76',
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  debugText: {
+    fontSize: 11,
+    color: '#c8d6e5',
+    fontWeight: '600',
+  },
+  debugError: {
+    marginTop: 2,
+    fontSize: 10,
+    color: '#ff8f8f',
+    maxWidth: 260,
+  },
 });

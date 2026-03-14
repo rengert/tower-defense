@@ -26,10 +26,9 @@
     ]
   },
   "dependencies": {
+    "@shopify/react-native-skia": "^2.3.10",
     "expo": "~54.0.33",
-    "expo-gl": "~16.0.10",
     "expo-status-bar": "55.0.4",
-    "pixi.js": "^7.4.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.4",

@@ -1,19 +1,12 @@
 /**
- * PixiGameRenderer
+ * PixiGameRenderer (legacy name)
  *
- * Uses expo-gl to create a WebGL context and drives a pixi.js v7 Renderer to
- * draw the tower-defense game board at up to 60 fps.
- *
- * Responsibilities:
- *  - Render grid, path row, towers and enemies using pixi.js Graphics primitives.
- *  - Run the game loop via PIXI.Ticker (delta-time based) so enemy movement is smooth.
- *  - Forward cell-press touch events via the onCellPress callback.
- *  - Stop the ticker and clean up when the component unmounts or the game ends.
+ * Native-safe renderer implemented with React Native Skia.
+ * Keeps the same public API so GameScreen does not need to change.
  */
-import { GLView } from 'expo-gl';
-import * as PIXI from 'pixi.js';
-import React, { useCallback, useRef } from 'react';
-import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
+import { Canvas, Circle, Line, Rect, RoundedRect } from '@shopify/react-native-skia';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
 import {
   GRID_COLS,
   GRID_ROWS,
@@ -34,24 +27,42 @@ interface Props {
   running: boolean;
   /** Whether build-mode cell highlights should be shown. */
   buildMode: boolean;
+  /** Emits renderer diagnostics so native black-screen issues are visible in UI/logs. */
+  onDiagnosticsChange: (diag: RenderDiagnostics) => void;
 }
+
+export interface RenderDiagnostics {
+  glReady: boolean;
+  rendererReady: boolean;
+  frameCount: number;
+  lastFrameMs: number | null;
+  lastError: string | null;
+}
+
+const INITIAL_DIAGNOSTICS: RenderDiagnostics = {
+  glReady: false,
+  rendererReady: false,
+  frameCount: 0,
+  lastFrameMs: null,
+  lastError: null,
+};
 
 // ── Colors ─────────────────────────────────────────────────────────────────
 const C = {
-  bg: 0x0a0a1a,
-  gridLine: 0x0a0a2a,
-  cell: 0x1e2d3d,
-  pathRow: 0x5a4a3a,
-  towerCell: 0x1a3a2e,
-  buildHighlight: 0x1e4a2a,
-  tower: 0x40c080,
-  towerAccent: 0xf0c040,
-  towerRange: 0x40c080,
-  enemy: 0xe04040,
-  hpFull: 0x40e040,
-  hpLow: 0xf08020,
-  hpEmpty: 0xe04040,
-  pathArrow: 0x7a6a5a,
+  bg: '#0a0a1a',
+  gridLine: '#0a0a2a',
+  cell: '#1e2d3d',
+  pathRow: '#5a4a3a',
+  towerCell: '#1a3a2e',
+  buildHighlight: '#1e4a2a',
+  tower: '#40c080',
+  towerAccent: '#f0c040',
+  towerRange: '#40c080',
+  enemy: '#e04040',
+  hpFull: '#40e040',
+  hpLow: '#f08020',
+  hpEmpty: '#e04040',
+  pathArrow: '#7a6a5a',
 };
 
 export default function PixiGameRenderer({
@@ -60,15 +71,11 @@ export default function PixiGameRenderer({
   gameStateRef,
   running,
   buildMode,
+  onDiagnosticsChange,
 }: Props) {
-  const tickerRef = useRef<PIXI.Ticker | null>(null);
-  const rendererRef = useRef<PIXI.IRenderer | null>(null);
-  const stageRef = useRef<PIXI.Container | null>(null);
-  // Graphics layers
-  const gridGfxRef = useRef<PIXI.Graphics | null>(null);
-  const enemyGfxRef = useRef<PIXI.Graphics | null>(null);
-  // Dimensions set once layout is known
   const dimsRef = useRef({ width: 0, height: 0, cellW: 0, cellH: 0 });
+  const [dims, setDims] = useState(dimsRef.current);
+  const [frameVersion, setFrameVersion] = useState(0);
   const runningRef = useRef(running);
   runningRef.current = running;
   const buildModeRef = useRef(buildMode);
@@ -76,194 +83,110 @@ export default function PixiGameRenderer({
   // Keep onTick stable in the ticker closure via a ref so stale captures are avoided.
   const onTickRef = useRef(onTick);
   onTickRef.current = onTick;
+  const onDiagnosticsChangeRef = useRef(onDiagnosticsChange);
+  onDiagnosticsChangeRef.current = onDiagnosticsChange;
+  const diagRef = useRef<RenderDiagnostics>(INITIAL_DIAGNOSTICS);
+  const rafRef = useRef<number | null>(null);
+  const mountedRef = useRef(true);
+  const lastTickMsRef = useRef<number | null>(null);
+
+  const emitDiagnostics = useCallback((patch: Partial<RenderDiagnostics>) => {
+    const next = { ...diagRef.current, ...patch };
+    diagRef.current = next;
+    onDiagnosticsChangeRef.current(next);
+  }, []);
+
+  useEffect(() => {
+    emitDiagnostics(INITIAL_DIAGNOSTICS);
+
+    if (__DEV__) {
+      // eslint-disable-next-line no-console
+      console.info('[PixiGameRenderer] Skia renderer ready');
+    }
+    emitDiagnostics({ glReady: true, rendererReady: true, lastError: null });
+
+    const frame = (now: number) => {
+      if (!mountedRef.current) return;
+
+      if (runningRef.current) {
+        const last = lastTickMsRef.current ?? now;
+        const dtMs = Math.max(0, now - last);
+        lastTickMsRef.current = now;
+
+        try {
+          onTickRef.current(dtMs);
+          const frameCount = diagRef.current.frameCount + 1;
+          emitDiagnostics({ frameCount, lastFrameMs: Date.now(), lastError: null });
+          if (__DEV__ && frameCount % 120 === 0) {
+            // eslint-disable-next-line no-console
+            console.info('[PixiGameRenderer] frame heartbeat', { frameCount });
+          }
+          setFrameVersion((v) => v + 1);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          emitDiagnostics({ lastError: message });
+          if (__DEV__) {
+            // eslint-disable-next-line no-console
+            console.error('[PixiGameRenderer] render error', error);
+          }
+        }
+      } else {
+        lastTickMsRef.current = null;
+      }
+
+      rafRef.current = requestAnimationFrame(frame);
+    };
+
+    rafRef.current = requestAnimationFrame(frame);
+
+    return () => {
+      mountedRef.current = false;
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [emitDiagnostics]);
 
   // ── Compute cell dimensions ──────────────────────────────────────────────
   const handleLayout = useCallback((e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
-    dimsRef.current = {
+    const next = {
       width,
       height,
       cellW: width / GRID_COLS,
       cellH: height / GRID_ROWS,
     };
+    dimsRef.current = next;
+    setDims(next);
   }, []);
+  const state = gameStateRef.current;
 
-  // ── pixi.js rendering helpers ────────────────────────────────────────────
-  function drawGrid(
-    gfx: PIXI.Graphics,
-    state: GameState,
-    cellW: number,
-    cellH: number
-  ) {
-    gfx.clear();
+  const cells = useMemo(() => {
+    const list: Array<{ key: string; x: number; y: number; color: string }> = [];
     const towerSet = new Set(state.towers.map((t) => `${t.row},${t.col}`));
-
     for (let r = 0; r < GRID_ROWS; r++) {
       for (let c = 0; c < GRID_COLS; c++) {
-        const x = c * cellW;
-        const y = r * cellH;
-        let fill: number;
+        const key = `${r}-${c}`;
+        let color = C.cell;
         if (r === PATH_ROW) {
-          fill = C.pathRow;
+          color = C.pathRow;
         } else if (towerSet.has(`${r},${c}`)) {
-          fill = C.towerCell;
-        } else if (buildModeRef.current && r !== PATH_ROW && state.gold >= TOWER_COST && !towerSet.has(`${r},${c}`)) {
-          fill = C.buildHighlight;
-        } else {
-          fill = C.cell;
+          color = C.towerCell;
+        } else if (
+          buildModeRef.current &&
+          r !== PATH_ROW &&
+          state.gold >= TOWER_COST &&
+          !towerSet.has(`${r},${c}`)
+        ) {
+          color = C.buildHighlight;
         }
-
-        gfx.beginFill(fill);
-        gfx.lineStyle(0.5, C.gridLine, 1);
-        gfx.drawRect(x, y, cellW, cellH);
-        gfx.endFill();
+        list.push({ key, x: c * dims.cellW, y: r * dims.cellH, color });
       }
     }
-
-    // Draw path direction arrows along PATH_ROW
-    const arrowY = PATH_ROW * cellH + cellH / 2;
-    gfx.lineStyle(1, C.pathArrow, 0.5);
-    for (let c = 1; c < GRID_COLS - 1; c += 2) {
-      const ax = c * cellW + cellW * 0.3;
-      gfx.moveTo(ax, arrowY - cellH * 0.15);
-      gfx.lineTo(ax + cellW * 0.3, arrowY);
-      gfx.lineTo(ax, arrowY + cellH * 0.15);
-    }
-    gfx.lineStyle(0);
-
-    // Draw towers
-    for (const tower of state.towers) {
-      const cx = tower.col * cellW + cellW / 2;
-      const cy = tower.row * cellH + cellH / 2;
-      const r = Math.min(cellW, cellH) * 0.35;
-
-      // Tower body (circle)
-      gfx.beginFill(C.tower);
-      gfx.drawCircle(cx, cy, r);
-      gfx.endFill();
-
-      // Tower accent (inner circle)
-      gfx.beginFill(C.towerAccent);
-      gfx.drawCircle(cx, cy, r * 0.45);
-      gfx.endFill();
-    }
-
-    // Draw range rings in build mode
-    if (buildModeRef.current) {
-      for (const tower of state.towers) {
-        const cx = tower.col * cellW + cellW / 2;
-        const cy = tower.row * cellH + cellH / 2;
-        gfx.lineStyle(1, C.towerRange, 0.3);
-        gfx.drawCircle(cx, cy, TOWER_RANGE * cellW);
-        gfx.lineStyle(0);
-      }
-    }
-  }
-
-  function drawEnemies(
-    gfx: PIXI.Graphics,
-    state: GameState,
-    cellW: number,
-    cellH: number
-  ) {
-    gfx.clear();
-    const pathY = PATH_ROW * cellH;
-    const padding = cellH * 0.1;
-    const enemyH = cellH * 0.55;
-    const hpBarH = 4;
-    const hpBarY = pathY + padding + enemyH + 2;
-
-    for (const enemy of state.enemies) {
-      const x = enemy.col * cellW + padding;
-      const w = cellW - padding * 2;
-
-      // Enemy body
-      gfx.beginFill(C.enemy);
-      gfx.drawRoundedRect(x, pathY + padding, w, enemyH, 2);
-      gfx.endFill();
-
-      // Health bar background
-      gfx.beginFill(0x333333);
-      gfx.drawRoundedRect(x, hpBarY, w, hpBarH, 2);
-      gfx.endFill();
-
-      // Health bar fill
-      const hpRatio = Math.max(0, enemy.health / enemy.maxHealth);
-      const hpColor = hpRatio > 0.5 ? C.hpFull : hpRatio > 0.25 ? C.hpLow : C.hpEmpty;
-      if (hpRatio > 0) {
-        gfx.beginFill(hpColor);
-        gfx.drawRoundedRect(x, hpBarY, w * hpRatio, hpBarH, 2);
-        gfx.endFill();
-      }
-    }
-  }
-
-  // ── GLView context create ────────────────────────────────────────────────
-  const onContextCreate = useCallback(
-    async (gl: WebGLRenderingContext & { endFrameEXP: () => void }) => {
-      const w = gl.drawingBufferWidth;
-      const h = gl.drawingBufferHeight;
-
-      // Create pixi.js renderer from the expo-gl context
-      const renderer = new PIXI.Renderer({
-        width: w,
-        height: h,
-        context: gl as unknown as WebGL2RenderingContext,
-        resolution: 1,
-        autoDensity: false,
-        clearBeforeRender: true,
-        backgroundColor: C.bg,
-      });
-      rendererRef.current = renderer;
-
-      const stage = new PIXI.Container();
-      stageRef.current = stage;
-
-      // Graphics layers
-      const gridGfx = new PIXI.Graphics();
-      const enemyGfx = new PIXI.Graphics();
-      stage.addChild(gridGfx);
-      stage.addChild(enemyGfx);
-      gridGfxRef.current = gridGfx;
-      enemyGfxRef.current = enemyGfx;
-
-      // ── Game ticker ────────────────────────────────────────────────────
-      const ticker = new PIXI.Ticker();
-      tickerRef.current = ticker;
-
-      ticker.add((delta) => {
-        if (!runningRef.current) return;
-
-        // delta = frames elapsed since last ticker call (1.0 at steady 60 fps).
-        // TARGET_FPMS = 0.06 (frames per millisecond at 60 fps).
-        // Dividing delta by TARGET_FPMS converts frames → milliseconds.
-        const dtMs = delta / PIXI.settings.TARGET_FPMS;
-
-        // Advance game logic via the ref to avoid stale closure.
-        onTickRef.current(dtMs);
-
-        const state = gameStateRef.current;
-        const { cellW, cellH } = dimsRef.current;
-
-        // Fallback cell sizes from GL buffer if layout hasn't fired yet
-        const cW = cellW > 0 ? cellW : w / GRID_COLS;
-        const cH = cellH > 0 ? cellH : h / GRID_ROWS;
-
-        drawGrid(gridGfx, state, cW, cH);
-        drawEnemies(enemyGfx, state, cW, cH);
-
-        renderer.render(stage);
-        gl.endFrameEXP();
-      });
-
-      ticker.start();
-    },
-    // onContextCreate is called once per GLView mount; all mutable values are
-    // accessed via refs (runningRef, onTickRef, buildModeRef, dimsRef) so the
-    // stable empty dependency array is intentional.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
+    return list;
+    // frameVersion keeps this derived data in sync with ref-based game updates.
+  }, [dims.cellH, dims.cellW, frameVersion, state.gold, state.towers]);
 
   // ── Touch → cell coord conversion ────────────────────────────────────────
   const handleTouch = useCallback(
@@ -284,11 +207,108 @@ export default function PixiGameRenderer({
 
   return (
     <View style={styles.container} onLayout={handleLayout}>
-      <GLView
-        style={StyleSheet.absoluteFill}
-        onContextCreate={onContextCreate}
-        onTouchEnd={handleTouch}
-      />
+      <Canvas style={StyleSheet.absoluteFill}>
+        <Rect x={0} y={0} width={dims.width} height={dims.height} color={C.bg} />
+
+        {cells.map((cell) => (
+          <React.Fragment key={cell.key}>
+            <Rect
+              x={cell.x}
+              y={cell.y}
+              width={dims.cellW}
+              height={dims.cellH}
+              color={cell.color}
+            />
+            <Rect
+              x={cell.x}
+              y={cell.y}
+              width={dims.cellW}
+              height={dims.cellH}
+              color={C.gridLine}
+              style="stroke"
+              strokeWidth={0.5}
+            />
+          </React.Fragment>
+        ))}
+
+        {Array.from({ length: GRID_COLS - 2 }).map((_, i) => {
+          const c = i + 1;
+          if (c % 2 === 0) return null;
+          const arrowY = PATH_ROW * dims.cellH + dims.cellH / 2;
+          const ax = c * dims.cellW + dims.cellW * 0.3;
+          return (
+            <React.Fragment key={`arrow-${c}`}>
+              <Line
+                p1={{ x: ax, y: arrowY - dims.cellH * 0.15 }}
+                p2={{ x: ax + dims.cellW * 0.3, y: arrowY }}
+                color={C.pathArrow}
+                strokeWidth={1}
+              />
+              <Line
+                p1={{ x: ax + dims.cellW * 0.3, y: arrowY }}
+                p2={{ x: ax, y: arrowY + dims.cellH * 0.15 }}
+                color={C.pathArrow}
+                strokeWidth={1}
+              />
+            </React.Fragment>
+          );
+        })}
+
+        {state.towers.map((tower) => {
+          const cx = tower.col * dims.cellW + dims.cellW / 2;
+          const cy = tower.row * dims.cellH + dims.cellH / 2;
+          const r = Math.min(dims.cellW, dims.cellH) * 0.35;
+          return (
+            <React.Fragment key={`tower-${tower.id}`}>
+              <Circle cx={cx} cy={cy} r={r} color={C.tower} />
+              <Circle cx={cx} cy={cy} r={r * 0.45} color={C.towerAccent} />
+              {buildMode && (
+                <Circle
+                  cx={cx}
+                  cy={cy}
+                  r={TOWER_RANGE * dims.cellW}
+                  color={C.towerRange}
+                  style="stroke"
+                  strokeWidth={1}
+                  opacity={0.3}
+                />
+              )}
+            </React.Fragment>
+          );
+        })}
+
+        {state.enemies.map((enemy) => {
+          const pathY = PATH_ROW * dims.cellH;
+          const padding = dims.cellH * 0.1;
+          const enemyH = dims.cellH * 0.55;
+          const hpBarH = 4;
+          const hpBarY = pathY + padding + enemyH + 2;
+          const x = enemy.col * dims.cellW + padding;
+          const w = dims.cellW - padding * 2;
+          const hpRatio = Math.max(0, enemy.health / enemy.maxHealth);
+          const hpColor =
+            hpRatio > 0.5 ? C.hpFull : hpRatio > 0.25 ? C.hpLow : C.hpEmpty;
+
+          return (
+            <React.Fragment key={`enemy-${enemy.id}`}>
+              <RoundedRect x={x} y={pathY + padding} width={w} height={enemyH} r={2} color={C.enemy} />
+              <RoundedRect x={x} y={hpBarY} width={w} height={hpBarH} r={2} color="#333333" />
+              {hpRatio > 0 && (
+                <RoundedRect
+                  x={x}
+                  y={hpBarY}
+                  width={w * hpRatio}
+                  height={hpBarH}
+                  r={2}
+                  color={hpColor}
+                />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </Canvas>
+
+      <Pressable style={StyleSheet.absoluteFill} onPress={handleTouch} />
     </View>
   );
 }
