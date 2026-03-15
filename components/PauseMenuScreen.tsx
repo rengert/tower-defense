@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useLanguage } from './i18n/LanguageContext';
 
 interface Props {
   onResume: () => void;
@@ -7,27 +8,29 @@ interface Props {
 }
 
 export default function PauseMenuScreen({ onResume, onQuitToMenu }: Props) {
+  const { t } = useLanguage();
+
   return (
     <View style={styles.overlay}>
       <View style={styles.panel}>
         <Text style={styles.icon}>⏸</Text>
-        <Text style={styles.title}>PAUSED</Text>
+        <Text style={styles.title}>{t.pausedTitle}</Text>
         <View style={styles.divider} />
         <TouchableOpacity
           style={styles.resumeButton}
           onPress={onResume}
           accessibilityRole="button"
-          accessibilityLabel="Resume game"
+          accessibilityLabel={t.resumeGameA11y}
         >
-          <Text style={styles.resumeButtonText}>▶ Resume</Text>
+          <Text style={styles.resumeButtonText}>{t.resumeButton}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.quitButton}
           onPress={onQuitToMenu}
           accessibilityRole="button"
-          accessibilityLabel="Quit to Menu"
+          accessibilityLabel={t.quitToMenuA11y}
         >
-          <Text style={styles.quitButtonText}>Quit to Menu</Text>
+          <Text style={styles.quitButtonText}>{t.quitToMenuButton}</Text>
         </TouchableOpacity>
       </View>
     </View>
