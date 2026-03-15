@@ -24,7 +24,7 @@ export default function StartMenuScreen({ onStartGame, onOpenSettings }: Props) 
           style={styles.startButton}
           onPress={onStartGame}
           accessibilityRole="button"
-          accessibilityLabel="Start Game"
+          accessibilityLabel={t.startButton}
         >
           <Text style={styles.startButtonText}>{t.startButton}</Text>
         </TouchableOpacity>
@@ -32,7 +32,7 @@ export default function StartMenuScreen({ onStartGame, onOpenSettings }: Props) 
           style={styles.settingsButton}
           onPress={onOpenSettings}
           accessibilityRole="button"
-          accessibilityLabel="Open Settings"
+          accessibilityLabel={t.settingsButton}
         >
           <Text style={styles.settingsButtonText}>{t.settingsButton}</Text>
         </TouchableOpacity>
