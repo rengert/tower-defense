@@ -13,6 +13,7 @@ import {
   TOWER_COST,
   TOWER_RANGE,
 } from './game/constants';
+import { bfsPath } from './game/logic';
 import type { GameState } from './game/types';
 
 // ── Kenney enemy sprites (CC-0 pixel art, 32×32 RGBA PNG) ──────────────────
@@ -176,17 +177,20 @@ export default function PixiGameRenderer({
   const cells = useMemo(() => {
     const list: Array<{ key: string; x: number; y: number; color: string }> = [];
     const towerSet = new Set(state.towers.map((t) => `${t.row},${t.col}`));
+    const currentPath = bfsPath(state.towers);
+    const pathSet = currentPath
+      ? new Set(currentPath.map((p) => `${p.row},${p.col}`))
+      : new Set<string>();
     for (let r = 0; r < GRID_ROWS; r++) {
       for (let c = 0; c < GRID_COLS; c++) {
         const key = `${r}-${c}`;
         let color = C.cell;
-        if (r === PATH_ROW) {
-          color = C.pathRow;
-        } else if (towerSet.has(`${r},${c}`)) {
+        if (towerSet.has(`${r},${c}`)) {
           color = C.towerCell;
+        } else if (pathSet.has(`${r},${c}`)) {
+          color = C.pathRow;
         } else if (
           buildModeRef.current &&
-          r !== PATH_ROW &&
           state.gold >= TOWER_COST &&
           !towerSet.has(`${r},${c}`)
         ) {
@@ -264,7 +268,7 @@ export default function PixiGameRenderer({
         })}
 
         {state.enemies.map((enemy) => {
-          const pathY = PATH_ROW * dims.cellH;
+          const pathY = (enemy.row ?? PATH_ROW) * dims.cellH;
           const padding = dims.cellH * 0.1;
           const enemyH = dims.cellH * 0.6;
           const hpBarH = 5;

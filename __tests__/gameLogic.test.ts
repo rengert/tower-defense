@@ -1,4 +1,5 @@
 import {
+  bfsPath,
   canPlaceTower,
   createInitialState,
   placeTower,
@@ -8,6 +9,7 @@ import {
   ENEMY_GOLD_REWARD,
   ENEMIES_PER_WAVE,
   GRID_COLS,
+  GRID_ROWS,
   PATH_ROW,
   SPAWN_INTERVAL_MS,
   STARTING_GOLD,
@@ -18,7 +20,7 @@ import {
   TOWER_DAMAGE,
   TOWER_RANGE,
 } from '../components/game/constants';
-import type { GameState } from '../components/game/types';
+import type { GameState, Tower } from '../components/game/types';
 
 describe('createInitialState', () => {
   it('returns the correct starting values', () => {
@@ -31,6 +33,48 @@ describe('createInitialState', () => {
     expect(state.towers).toHaveLength(0);
     expect(state.enemiesSpawned).toBe(0);
     expect(state.enemiesKilled).toBe(0);
+  });
+});
+
+describe('bfsPath', () => {
+  it('returns a straight path when no towers are present', () => {
+    const path = bfsPath([]);
+    expect(path).not.toBeNull();
+    expect(path![0]).toEqual({ row: PATH_ROW, col: 0 });
+    expect(path![path!.length - 1]).toEqual({ row: PATH_ROW, col: GRID_COLS - 1 });
+    // Straight line has exactly GRID_COLS cells
+    expect(path!).toHaveLength(GRID_COLS);
+  });
+
+  it('finds a detour when PATH_ROW is partially blocked', () => {
+    // Block the middle of PATH_ROW
+    const towers: Tower[] = [{ id: 1, row: PATH_ROW, col: 5, cooldownMs: 0 }];
+    const path = bfsPath(towers);
+    expect(path).not.toBeNull();
+    // Path must go through a different row to bypass the blocked cell
+    const usesDetour = path!.some((p) => p.row !== PATH_ROW);
+    expect(usesDetour).toBe(true);
+  });
+
+  it('returns null when all cells of a column are blocked', () => {
+    // Block every row at col 5 – no way through
+    const towers: Tower[] = Array.from({ length: GRID_ROWS }, (_, r) => ({
+      id: r,
+      row: r,
+      col: 5,
+      cooldownMs: 0,
+    }));
+    expect(bfsPath(towers)).toBeNull();
+  });
+
+  it('returns null when the start cell is blocked', () => {
+    const towers: Tower[] = [{ id: 1, row: PATH_ROW, col: 0, cooldownMs: 0 }];
+    expect(bfsPath(towers)).toBeNull();
+  });
+
+  it('returns null when the end cell is blocked', () => {
+    const towers: Tower[] = [{ id: 1, row: PATH_ROW, col: GRID_COLS - 1, cooldownMs: 0 }];
+    expect(bfsPath(towers)).toBeNull();
   });
 });
 
@@ -181,8 +225,14 @@ describe('tickGame', () => {
 });
 
 describe('canPlaceTower', () => {
-  it('returns false for path row', () => {
-    expect(canPlaceTower(createInitialState(), PATH_ROW, 5)).toBe(false);
+  it('allows placement on path row when a detour still exists', () => {
+    // Mid-row cell – enemies can detour around it
+    expect(canPlaceTower(createInitialState(), PATH_ROW, 5)).toBe(true);
+  });
+
+  it('returns false when tower would block the only remaining path', () => {
+    // The BFS start cell (PATH_ROW, 0) is the gateway – blocking it cuts all routes
+    expect(canPlaceTower(createInitialState(), PATH_ROW, 0)).toBe(false);
   });
 
   it('returns false when gold is insufficient', () => {
@@ -201,7 +251,7 @@ describe('canPlaceTower', () => {
     expect(canPlaceTower(state, 2, 5)).toBe(false);
   });
 
-  it('returns true for a valid empty non-path cell', () => {
+  it('returns true for a valid empty cell', () => {
     expect(canPlaceTower(createInitialState(), PATH_ROW - 1, 5)).toBe(true);
   });
 });
@@ -217,7 +267,8 @@ describe('placeTower', () => {
 
   it('returns the same state when placement is invalid', () => {
     const state = createInitialState();
-    expect(placeTower(state, PATH_ROW, 5)).toBe(state);
+    // PATH_ROW,0 blocks the BFS start – no path can exist, so placement is rejected
+    expect(placeTower(state, PATH_ROW, 0)).toBe(state);
   });
 
   it('increments nextTowerId after placement', () => {

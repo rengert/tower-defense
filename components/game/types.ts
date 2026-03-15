@@ -6,12 +6,16 @@ export type TowerType = 'archer' | 'cannon' | 'magic';
 
 export interface Enemy {
   id: number;
-  /** Float column position along PATH_ROW (left = 0, right = GRID_COLS). */
+  /** Float column position (x in grid cells). */
   col: number;
+  /** Float row position (y in grid cells). Defaults to PATH_ROW when not set. */
+  row?: number;
   health: number;
   maxHealth: number;
   /** Kenney sprite type assigned at spawn based on the current wave. */
   enemyType?: EnemyType;
+  /** Total distance traveled along the current path in cells (0 = entry off-screen). */
+  pathProgress?: number;
 }
 
 export interface Tower {
