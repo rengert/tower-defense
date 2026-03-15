@@ -1,0 +1,42 @@
+/**
+ * Mock for PixiGameRenderer used in Jest tests.
+ *
+ * Replaces the native Skia canvas with a plain View containing a test
+ * button that triggers onCellPress(0, 0) so tower-placement tests can work
+ * without a real WebGL context.
+ */
+import React from 'react';
+import { TouchableOpacity, Text, View } from 'react-native';
+
+interface RenderDiagnostics {
+  glReady: boolean;
+  rendererReady: boolean;
+  frameCount: number;
+  lastFrameMs: number | null;
+  lastError: string | null;
+}
+
+interface Props {
+  onTick: (dtMs: number) => void;
+  onCellPress: (row: number, col: number) => void;
+  gameStateRef: React.MutableRefObject<unknown>;
+  running: boolean;
+  buildMode: boolean;
+  onDiagnosticsChange: (diag: RenderDiagnostics) => void;
+}
+
+export default function PixiGameRenderer({
+  onCellPress,
+  onDiagnosticsChange: _onDiagnosticsChange,
+}: Props) {
+  return (
+    <View testID="pixi-game-renderer">
+      <TouchableOpacity
+        accessibilityLabel="Cell row 0 col 0"
+        onPress={() => onCellPress(0, 0)}
+      >
+        <Text>Cell 0,0</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
