@@ -17,7 +17,14 @@ import {
   TOWER_RANGE,
   WAVE_BREAK_MS,
 } from './constants';
-import type { Enemy, GameState, Tower } from './types';
+import type { Enemy, EnemyType, GameState, Tower } from './types';
+
+/** Maps wave number to the Kenney enemy sprite used in that wave. */
+const WAVE_ENEMY_TYPE: Record<number, EnemyType> = {
+  1: 'goblin',
+  2: 'orc',
+  3: 'skeleton',
+};
 
 export function createInitialState(): GameState {
   return {
@@ -72,9 +79,10 @@ export function tickGame(prev: GameState, dtMs: number = TICK_MS): GameState {
     elapsedMs - lastSpawnMs >= SPAWN_INTERVAL_MS
   ) {
     const health = ENEMY_BASE_HEALTH + (wave - 1) * ENEMY_HEALTH_SCALE_PER_WAVE;
+    const enemyType: EnemyType = WAVE_ENEMY_TYPE[wave] ?? 'goblin';
     enemies = [
       ...enemies,
-      { id: nextEnemyId++, col: -1, health, maxHealth: health },
+      { id: nextEnemyId++, col: -1, health, maxHealth: health, enemyType },
     ];
     enemiesSpawned++;
     lastSpawnMs = elapsedMs;

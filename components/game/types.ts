@@ -1,9 +1,14 @@
+/** Visual sprite variant for an enemy, assigned at spawn time. */
+export type EnemyType = 'goblin' | 'orc' | 'skeleton';
+
 export interface Enemy {
   id: number;
   /** Float column position along PATH_ROW (left = 0, right = GRID_COLS). */
   col: number;
   health: number;
   maxHealth: number;
+  /** Kenney sprite type assigned at spawn based on the current wave. */
+  enemyType?: EnemyType;
 }
 
 export interface Tower {
