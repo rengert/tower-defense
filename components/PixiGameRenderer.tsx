@@ -48,20 +48,21 @@ const INITIAL_DIAGNOSTICS: RenderDiagnostics = {
 
 // ── Colors ─────────────────────────────────────────────────────────────────
 const C = {
-  bg: '#0a0a1a',
-  gridLine: '#0a0a2a',
-  cell: '#1e2d3d',
-  pathRow: '#5a4a3a',
-  towerCell: '#1a3a2e',
-  buildHighlight: '#1e4a2a',
-  tower: '#40c080',
-  towerAccent: '#f0c040',
-  towerRange: '#40c080',
-  enemy: '#e04040',
-  hpFull: '#40e040',
-  hpLow: '#f08020',
-  hpEmpty: '#e04040',
-  pathArrow: '#7a6a5a',
+  bg: '#0d1017',
+  gridLine: '#182030',
+  cell: '#111b2d',
+  pathRow: '#2a2010',
+  towerCell: '#0a2018',
+  buildHighlight: '#0d3020',
+  tower: '#3dba78',
+  towerRing: '#2a9060',
+  towerAccent: '#f5c842',
+  enemy: '#dc3545',
+  enemyBorder: '#ff6070',
+  hpFull: '#4ade80',
+  hpLow: '#fb923c',
+  hpEmpty: '#ef4444',
+  hpBg: '#111827',
 };
 
 export default function PixiGameRenderer({
@@ -229,8 +230,27 @@ export default function PixiGameRenderer({
           const cx = tower.col * dims.cellW + dims.cellW / 2;
           const cy = tower.row * dims.cellH + dims.cellH / 2;
           const r = Math.min(dims.cellW, dims.cellH) * 0.35;
+          const ringR = r + 3;
           return (
             <React.Fragment key={`tower-${tower.id}`}>
+              {/* Outer ring */}
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.tower,
+                  {
+                    left: cx - ringR,
+                    top: cy - ringR,
+                    width: ringR * 2,
+                    height: ringR * 2,
+                    borderRadius: ringR,
+                    borderWidth: 1.5,
+                    borderColor: C.towerRing,
+                    backgroundColor: 'transparent',
+                  },
+                ]}
+              />
+              {/* Main body */}
               <View
                 pointerEvents="none"
                 style={[
@@ -245,16 +265,17 @@ export default function PixiGameRenderer({
                   },
                 ]}
               />
+              {/* Accent dot */}
               <View
                 pointerEvents="none"
                 style={[
                   styles.tower,
                   {
-                    left: cx - r * 0.45,
-                    top: cy - r * 0.45,
-                    width: r * 0.9,
-                    height: r * 0.9,
-                    borderRadius: r * 0.45,
+                    left: cx - r * 0.38,
+                    top: cy - r * 0.38,
+                    width: r * 0.76,
+                    height: r * 0.76,
+                    borderRadius: r * 0.38,
                     backgroundColor: C.towerAccent,
                   },
                 ]}
@@ -266,9 +287,9 @@ export default function PixiGameRenderer({
         {state.enemies.map((enemy) => {
           const pathY = PATH_ROW * dims.cellH;
           const padding = dims.cellH * 0.1;
-          const enemyH = dims.cellH * 0.55;
-          const hpBarH = 4;
-          const hpBarY = pathY + padding + enemyH + 2;
+          const enemyH = dims.cellH * 0.6;
+          const hpBarH = 5;
+          const hpBarY = pathY + padding + enemyH + 3;
           const x = enemy.col * dims.cellW + padding;
           const w = dims.cellW - padding * 2;
           const hpRatio = Math.max(0, enemy.health / enemy.maxHealth);
@@ -286,6 +307,8 @@ export default function PixiGameRenderer({
                     width: w,
                     height: enemyH,
                     backgroundColor: C.enemy,
+                    borderColor: C.enemyBorder,
+                    borderWidth: 1,
                   },
                 ]}
               />
@@ -293,7 +316,7 @@ export default function PixiGameRenderer({
                 pointerEvents="none"
                 style={[
                   styles.hpBar,
-                  { left: x, top: hpBarY, width: w, height: hpBarH, backgroundColor: '#333333' },
+                  { left: x, top: hpBarY, width: w, height: hpBarH, backgroundColor: C.hpBg },
                 ]}
               />
               {hpRatio > 0 && (
@@ -324,7 +347,7 @@ export default function PixiGameRenderer({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a1a',
+    backgroundColor: '#0d1017',
   },
   cell: {
     position: 'absolute',
@@ -335,10 +358,10 @@ const styles = StyleSheet.create({
   },
   enemy: {
     position: 'absolute',
-    borderRadius: 2,
+    borderRadius: 4,
   },
   hpBar: {
     position: 'absolute',
-    borderRadius: 2,
+    borderRadius: 3,
   },
 });

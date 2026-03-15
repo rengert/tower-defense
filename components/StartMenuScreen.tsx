@@ -8,16 +8,24 @@ interface Props {
 export default function StartMenuScreen({ onStartGame }: Props) {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Tower Defense</Text>
-      <Text style={styles.subtitle}>Defend your base!</Text>
-      <TouchableOpacity
-        style={styles.startButton}
-        onPress={onStartGame}
-        accessibilityRole="button"
-        accessibilityLabel="Start Game"
-      >
-        <Text style={styles.startButtonText}>Start Game</Text>
-      </TouchableOpacity>
+      <View style={styles.heroSection}>
+        <Text style={styles.towerIcon}>🗼</Text>
+        <Text style={styles.title}>TOWER{'\n'}DEFENSE</Text>
+        <View style={styles.divider} />
+        <Text style={styles.subtitle}>Strategic · Tactical · Satisfying</Text>
+      </View>
+
+      <View style={styles.actionSection}>
+        <TouchableOpacity
+          style={styles.startButton}
+          onPress={onStartGame}
+          accessibilityRole="button"
+          accessibilityLabel="Start Game"
+        >
+          <Text style={styles.startButtonText}>▶ Start Game</Text>
+        </TouchableOpacity>
+        <Text style={styles.hint}>Place towers · Survive waves · Defend your base</Text>
+      </View>
     </View>
   );
 }
@@ -25,30 +33,64 @@ export default function StartMenuScreen({ onStartGame }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a1a',
+    backgroundColor: '#0d1017',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  heroSection: {
+    alignItems: 'center',
+    marginBottom: 56,
+  },
+  towerIcon: {
+    fontSize: 56,
+    marginBottom: 16,
   },
   title: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#f0c040',
-    marginBottom: 8,
+    fontSize: 46,
+    fontWeight: '900',
+    color: '#f5c842',
+    letterSpacing: 5,
+    textAlign: 'center',
+    lineHeight: 52,
+    marginBottom: 20,
+  },
+  divider: {
+    width: 56,
+    height: 3,
+    backgroundColor: '#f5c842',
+    borderRadius: 2,
+    marginBottom: 14,
+    opacity: 0.6,
   },
   subtitle: {
-    fontSize: 18,
-    color: '#a0b8d0',
-    marginBottom: 48,
+    fontSize: 14,
+    color: '#5a7080',
+    letterSpacing: 1.5,
+    textAlign: 'center',
+  },
+  actionSection: {
+    width: '100%',
+    alignItems: 'center',
+    gap: 14,
   },
   startButton: {
-    backgroundColor: '#f0c040',
-    paddingVertical: 14,
-    paddingHorizontal: 48,
-    borderRadius: 8,
+    backgroundColor: '#f5c842',
+    paddingVertical: 16,
+    borderRadius: 14,
+    width: '100%',
+    alignItems: 'center',
   },
   startButtonText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#0a0a1a',
+    fontSize: 19,
+    fontWeight: '800',
+    color: '#0d1017',
+    letterSpacing: 1,
+  },
+  hint: {
+    fontSize: 12,
+    color: '#3a4a5a',
+    textAlign: 'center',
+    letterSpacing: 0.5,
   },
 });
