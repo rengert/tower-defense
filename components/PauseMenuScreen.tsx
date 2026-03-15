@@ -10,14 +10,16 @@ export default function PauseMenuScreen({ onResume, onQuitToMenu }: Props) {
   return (
     <View style={styles.overlay}>
       <View style={styles.panel}>
-        <Text style={styles.title}>Paused</Text>
+        <Text style={styles.icon}>⏸</Text>
+        <Text style={styles.title}>PAUSED</Text>
+        <View style={styles.divider} />
         <TouchableOpacity
           style={styles.resumeButton}
           onPress={onResume}
           accessibilityRole="button"
           accessibilityLabel="Resume game"
         >
-          <Text style={styles.resumeButtonText}>Resume</Text>
+          <Text style={styles.resumeButtonText}>▶ Resume</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.quitButton}
@@ -35,51 +37,63 @@ export default function PauseMenuScreen({ onResume, onQuitToMenu }: Props) {
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.75)',
+    backgroundColor: 'rgba(5,8,18,0.88)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   panel: {
-    backgroundColor: '#1a1a2e',
-    borderRadius: 12,
+    backgroundColor: '#131825',
+    borderRadius: 20,
     padding: 32,
     alignItems: 'center',
-    width: 260,
+    width: 280,
     borderWidth: 1,
-    borderColor: '#f0c040',
+    borderColor: 'rgba(245,200,66,0.4)',
+  },
+  icon: {
+    fontSize: 32,
+    marginBottom: 8,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#f0c040',
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#f5c842',
+    letterSpacing: 3,
+    marginBottom: 20,
+  },
+  divider: {
+    width: 40,
+    height: 2,
+    backgroundColor: '#f5c842',
+    borderRadius: 1,
+    opacity: 0.4,
     marginBottom: 24,
   },
   resumeButton: {
-    backgroundColor: '#f0c040',
-    paddingVertical: 12,
-    paddingHorizontal: 40,
-    borderRadius: 8,
-    marginBottom: 12,
+    backgroundColor: '#f5c842',
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 10,
     width: '100%',
     alignItems: 'center',
   },
   resumeButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#0a0a1a',
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0d1017',
+    letterSpacing: 0.5,
   },
   quitButton: {
     backgroundColor: 'transparent',
-    paddingVertical: 12,
-    paddingHorizontal: 40,
-    borderRadius: 8,
+    paddingVertical: 13,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#a0b8d0',
+    borderColor: 'rgba(160,176,200,0.3)',
     width: '100%',
     alignItems: 'center',
   },
   quitButtonText: {
-    fontSize: 18,
-    color: '#a0b8d0',
+    fontSize: 16,
+    color: '#5a7080',
   },
 });

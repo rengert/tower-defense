@@ -90,12 +90,19 @@ export default function GameScreen({ onQuitToMenu }: Props) {
       {/* ── Header HUD ──────────────────────────────────────────────────── */}
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
-          <Text style={styles.waveText}>
-            Wave {hudWave}/{TOTAL_WAVES}
-          </Text>
+          <View style={styles.waveBadge}>
+            <Text style={styles.waveLabel}>WAVE</Text>
+            <Text style={styles.waveValue}>{hudWave}/{TOTAL_WAVES}</Text>
+          </View>
           <View style={styles.statsRow}>
-            <Text style={styles.stat}>❤️ {hudLives}</Text>
-            <Text style={styles.stat}>💰 {hudGold}</Text>
+            <View style={styles.statPill}>
+              <Text style={styles.statIcon}>❤️</Text>
+              <Text style={styles.statValue}>{hudLives}</Text>
+            </View>
+            <View style={styles.statPill}>
+              <Text style={styles.statIcon}>💰</Text>
+              <Text style={styles.statValue}>{hudGold}</Text>
+            </View>
           </View>
           <TouchableOpacity
             style={styles.pauseButton}
@@ -103,7 +110,7 @@ export default function GameScreen({ onQuitToMenu }: Props) {
             accessibilityRole="button"
             accessibilityLabel="Pause game"
           >
-            <Text style={styles.pauseButtonText}>⏸ Pause</Text>
+            <Text style={styles.pauseButtonText}>⏸</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -140,7 +147,7 @@ export default function GameScreen({ onQuitToMenu }: Props) {
           accessibilityLabel={buildMode ? 'Cancel build' : 'Build tower'}
         >
           <Text style={styles.buildBtnText}>
-            {buildMode ? '✕ Cancel' : `🗼 Build Tower (${TOWER_COST} 💰)`}
+            {buildMode ? '✕ Cancel Build' : `🗼 Build Tower · ${TOWER_COST} 💰`}
           </Text>
         </TouchableOpacity>
       </View>
@@ -157,18 +164,23 @@ export default function GameScreen({ onQuitToMenu }: Props) {
       {gameStatus === 'won' && (
         <View style={styles.overlay}>
           <View style={styles.panel}>
-            <Text style={styles.panelTitle}>🏆 You Win!</Text>
+            <Text style={styles.panelIcon}>🏆</Text>
+            <Text style={styles.panelTitle}>VICTORY!</Text>
+            <View style={styles.panelDivider} />
             <Text style={styles.panelStat}>
-              Enemies defeated: {gameRef.current.enemiesKilled}
+              Enemies defeated:{' '}
+              <Text style={styles.panelStatValue}>{gameRef.current.enemiesKilled}</Text>
             </Text>
-            <Text style={styles.panelStat}>Gold remaining: {hudGold}</Text>
+            <Text style={styles.panelStat}>
+              Gold remaining: <Text style={styles.panelStatValue}>{hudGold}</Text>
+            </Text>
             <TouchableOpacity
               style={styles.panelBtn}
               onPress={handleRestart}
               accessibilityRole="button"
               accessibilityLabel="Play Again"
             >
-              <Text style={styles.panelBtnText}>Play Again</Text>
+              <Text style={styles.panelBtnText}>▶ Play Again</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.panelBtnSecondary}
@@ -186,12 +198,16 @@ export default function GameScreen({ onQuitToMenu }: Props) {
       {gameStatus === 'lost' && (
         <View style={styles.overlay}>
           <View style={styles.panel}>
-            <Text style={styles.panelTitle}>💀 Game Over</Text>
+            <Text style={styles.panelIcon}>💀</Text>
+            <Text style={styles.panelTitle}>GAME OVER</Text>
+            <View style={styles.panelDivider} />
             <Text style={styles.panelStat}>
-              Enemies defeated: {gameRef.current.enemiesKilled}
+              Enemies defeated:{' '}
+              <Text style={styles.panelStatValue}>{gameRef.current.enemiesKilled}</Text>
             </Text>
             <Text style={styles.panelStat}>
-              Waves survived: {hudWave}/{TOTAL_WAVES}
+              Waves survived:{' '}
+              <Text style={styles.panelStatValue}>{hudWave}/{TOTAL_WAVES}</Text>
             </Text>
             <TouchableOpacity
               style={styles.panelBtn}
@@ -199,7 +215,7 @@ export default function GameScreen({ onQuitToMenu }: Props) {
               accessibilityRole="button"
               accessibilityLabel="Try Again"
             >
-              <Text style={styles.panelBtnText}>Try Again</Text>
+              <Text style={styles.panelBtnText}>↺ Try Again</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.panelBtnSecondary}
@@ -217,93 +233,145 @@ export default function GameScreen({ onQuitToMenu }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a1a' },
-  safeArea: { backgroundColor: '#1a1a2e' },
+  container: { flex: 1, backgroundColor: '#0d1017' },
+  safeArea: { backgroundColor: '#131825' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#131825',
   },
-  waveText: { fontSize: 15, fontWeight: 'bold', color: '#f0c040', minWidth: 70 },
-  statsRow: { flexDirection: 'row', gap: 12 },
-  stat: { fontSize: 14, color: '#f0f0f0', fontWeight: '600' },
+  waveBadge: {
+    backgroundColor: 'rgba(245,200,66,0.12)',
+    borderRadius: 10,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(245,200,66,0.3)',
+    alignItems: 'center',
+    minWidth: 72,
+  },
+  waveLabel: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#f5c842',
+    letterSpacing: 1.5,
+  },
+  waveValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#f5c842',
+  },
+  statsRow: { flexDirection: 'row', gap: 8 },
+  statPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderRadius: 10,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+  },
+  statIcon: { fontSize: 13 },
+  statValue: { fontSize: 14, fontWeight: '700', color: '#d8e8f0' },
   pauseButton: {
-    backgroundColor: '#f0c040',
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.09)',
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  pauseButtonText: { fontSize: 14, fontWeight: 'bold', color: '#0a0a1a' },
+  pauseButtonText: { fontSize: 16, color: '#d8e8f0' },
 
   footer: {
-    padding: 12,
-    backgroundColor: '#1a1a2e',
-    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingBottom: 16,
+    backgroundColor: '#131825',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
   },
   buildBtn: {
-    backgroundColor: '#2a4a3e',
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 8,
+    backgroundColor: '#0e2a1f',
+    paddingVertical: 14,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#40c080',
+    borderColor: '#3dba78',
+    alignItems: 'center',
   },
   buildBtnActive: {
-    backgroundColor: '#4a2a2a',
-    borderColor: '#c04040',
+    backgroundColor: '#2a1010',
+    borderColor: '#ef4444',
   },
-  buildBtnText: { fontSize: 15, fontWeight: 'bold', color: '#f0f0f0' },
+  buildBtnText: { fontSize: 15, fontWeight: '700', color: '#d8e8f0', letterSpacing: 0.5 },
 
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.82)',
+    backgroundColor: 'rgba(5,8,18,0.88)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   panel: {
-    backgroundColor: '#1a1a2e',
-    borderRadius: 12,
+    backgroundColor: '#131825',
+    borderRadius: 20,
     padding: 32,
     alignItems: 'center',
-    width: 280,
-    borderWidth: 2,
-    borderColor: '#f0c040',
+    width: 300,
+    borderWidth: 1,
+    borderColor: 'rgba(245,200,66,0.4)',
+  },
+  panelIcon: {
+    fontSize: 40,
+    marginBottom: 8,
   },
   panelTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#f0c040',
-    marginBottom: 12,
+    fontWeight: '900',
+    color: '#f5c842',
+    letterSpacing: 2,
+    marginBottom: 14,
+  },
+  panelDivider: {
+    width: 40,
+    height: 2,
+    backgroundColor: '#f5c842',
+    borderRadius: 1,
+    opacity: 0.4,
+    marginBottom: 16,
   },
   panelStat: {
-    fontSize: 15,
-    color: '#a0b8d0',
+    fontSize: 14,
+    color: '#5a7080',
     marginBottom: 6,
   },
+  panelStatValue: {
+    fontWeight: '700',
+    color: '#b0c8d8',
+  },
   panelBtn: {
-    backgroundColor: '#f0c040',
-    paddingVertical: 12,
+    backgroundColor: '#f5c842',
+    paddingVertical: 14,
     paddingHorizontal: 32,
-    borderRadius: 8,
-    marginTop: 18,
+    borderRadius: 12,
+    marginTop: 20,
     width: '100%',
     alignItems: 'center',
   },
-  panelBtnText: { fontSize: 17, fontWeight: 'bold', color: '#0a0a1a' },
+  panelBtnText: { fontSize: 17, fontWeight: '800', color: '#0d1017', letterSpacing: 0.5 },
   panelBtnSecondary: {
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 32,
-    marginTop: 8,
+    marginTop: 10,
     width: '100%',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#a0b8d0',
-    borderRadius: 8,
+    borderColor: 'rgba(160,176,200,0.25)',
+    borderRadius: 12,
   },
-  panelBtnSecondaryText: { fontSize: 16, color: '#a0b8d0' },
+  panelBtnSecondaryText: { fontSize: 15, color: '#5a7080' },
   debugBadge: {
     position: 'absolute',
     left: 8,

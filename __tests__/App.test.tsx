@@ -37,44 +37,44 @@ describe('App', () => {
   });
 
   it('renders the start menu with game title', () => {
-    expect(screen.getByText('Tower Defense')).toBeTruthy();
+    expect(screen.getByText(/TOWER/)).toBeTruthy();
   });
 
   it('renders the start menu subtitle', () => {
-    expect(screen.getByText('Defend your base!')).toBeTruthy();
+    expect(screen.getByText('Strategic · Tactical · Satisfying')).toBeTruthy();
   });
 
   it('renders the Start Game button on the start menu', () => {
-    expect(screen.getByText('Start Game')).toBeTruthy();
+    expect(screen.getByLabelText('Start Game')).toBeTruthy();
   });
 
   it('navigates to the game screen when Start Game is pressed', () => {
-    fireEvent.press(screen.getByText('Start Game'));
-    expect(screen.getByText('⏸ Pause')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Start Game'));
+    expect(screen.getByLabelText('Pause game')).toBeTruthy();
   });
 
   it('shows pause menu when Pause is pressed during game', () => {
-    fireEvent.press(screen.getByText('Start Game'));
-    fireEvent.press(screen.getByText('⏸ Pause'));
-    expect(screen.getByText('Paused')).toBeTruthy();
-    expect(screen.getByText('Resume')).toBeTruthy();
-    expect(screen.getByText('Quit to Menu')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Start Game'));
+    fireEvent.press(screen.getByLabelText('Pause game'));
+    expect(screen.getByText('PAUSED')).toBeTruthy();
+    expect(screen.getByLabelText('Resume game')).toBeTruthy();
+    expect(screen.getByLabelText('Quit to Menu')).toBeTruthy();
   });
 
   it('resumes the game when Resume is pressed', () => {
-    fireEvent.press(screen.getByText('Start Game'));
-    fireEvent.press(screen.getByText('⏸ Pause'));
-    fireEvent.press(screen.getByText('Resume'));
-    expect(screen.queryByText('Paused')).toBeNull();
-    expect(screen.getByText('⏸ Pause')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Start Game'));
+    fireEvent.press(screen.getByLabelText('Pause game'));
+    fireEvent.press(screen.getByLabelText('Resume game'));
+    expect(screen.queryByText('PAUSED')).toBeNull();
+    expect(screen.getByLabelText('Pause game')).toBeTruthy();
   });
 
   it('returns to the start menu when Quit to Menu is pressed', () => {
-    fireEvent.press(screen.getByText('Start Game'));
-    fireEvent.press(screen.getByText('⏸ Pause'));
-    fireEvent.press(screen.getByText('Quit to Menu'));
-    expect(screen.getByText('Start Game')).toBeTruthy();
-    expect(screen.queryByText('⏸ Pause')).toBeNull();
+    fireEvent.press(screen.getByLabelText('Start Game'));
+    fireEvent.press(screen.getByLabelText('Pause game'));
+    fireEvent.press(screen.getByLabelText('Quit to Menu'));
+    expect(screen.getByLabelText('Start Game')).toBeTruthy();
+    expect(screen.queryByLabelText('Pause game')).toBeNull();
   });
 });
 
@@ -82,7 +82,7 @@ describe('GameScreen HUD', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     render(<App />);
-    fireEvent.press(screen.getByText('Start Game'));
+    fireEvent.press(screen.getByLabelText('Start Game'));
   });
 
   afterEach(() => {
@@ -90,15 +90,15 @@ describe('GameScreen HUD', () => {
   });
 
   it('shows lives in the HUD', () => {
-    expect(screen.getByText(`❤️ ${STARTING_LIVES}`)).toBeTruthy();
+    expect(screen.getByText(String(STARTING_LIVES))).toBeTruthy();
   });
 
   it('shows gold in the HUD', () => {
-    expect(screen.getByText(`💰 ${STARTING_GOLD}`)).toBeTruthy();
+    expect(screen.getByText(String(STARTING_GOLD))).toBeTruthy();
   });
 
   it('shows wave counter in the HUD', () => {
-    expect(screen.getByText('Wave 1/3')).toBeTruthy();
+    expect(screen.getByText('1/3')).toBeTruthy();
   });
 });
 
@@ -106,7 +106,7 @@ describe('GameScreen tower building', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     render(<App />);
-    fireEvent.press(screen.getByText('Start Game'));
+    fireEvent.press(screen.getByLabelText('Start Game'));
   });
 
   afterEach(() => {
@@ -114,26 +114,26 @@ describe('GameScreen tower building', () => {
   });
 
   it('shows the Build Tower button', () => {
-    expect(screen.getByText(`🗼 Build Tower (50 💰)`)).toBeTruthy();
+    expect(screen.getByLabelText('Build tower')).toBeTruthy();
   });
 
   it('entering build mode shows the Cancel button', () => {
-    fireEvent.press(screen.getByText(`🗼 Build Tower (50 💰)`));
-    expect(screen.getByText('✕ Cancel')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Build tower'));
+    expect(screen.getByLabelText('Cancel build')).toBeTruthy();
   });
 
   it('cancelling build mode restores the Build Tower button', () => {
-    fireEvent.press(screen.getByText(`🗼 Build Tower (50 💰)`));
-    fireEvent.press(screen.getByText('✕ Cancel'));
-    expect(screen.getByText(`🗼 Build Tower (50 💰)`)).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Build tower'));
+    fireEvent.press(screen.getByLabelText('Cancel build'));
+    expect(screen.getByLabelText('Build tower')).toBeTruthy();
   });
 
   it('pressing a non-path cell in build mode places a tower and deducts gold', () => {
-    fireEvent.press(screen.getByText(`🗼 Build Tower (50 💰)`));
+    fireEvent.press(screen.getByLabelText('Build tower'));
     // Row 0, col 0 is a valid build cell (not PATH_ROW)
     fireEvent.press(screen.getByLabelText('Cell row 0 col 0'));
-    expect(screen.getByText(`💰 ${STARTING_GOLD - TOWER_COST}`)).toBeTruthy();
+    expect(screen.getByText(String(STARTING_GOLD - TOWER_COST))).toBeTruthy();
     // Build mode is cancelled automatically after placement
-    expect(screen.getByText(`🗼 Build Tower (50 💰)`)).toBeTruthy();
+    expect(screen.getByLabelText('Build tower')).toBeTruthy();
   });
 });
