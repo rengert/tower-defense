@@ -1,6 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLanguage } from './i18n/LanguageContext';
 import PixiGameRenderer, { type RenderDiagnostics } from './PixiGameRenderer';
 import PauseMenuScreen from './PauseMenuScreen';
 import { TOTAL_WAVES, TOWER_COST } from './game/constants';
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function GameScreen({ onQuitToMenu }: Props) {
+  const { t } = useLanguage();
   const [paused, setPaused] = useState(false);
   const [buildMode, setBuildMode] = useState(false);
 
@@ -91,7 +93,7 @@ export default function GameScreen({ onQuitToMenu }: Props) {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <View style={styles.waveBadge}>
-            <Text style={styles.waveLabel}>WAVE</Text>
+            <Text style={styles.waveLabel}>{t.wave.toUpperCase()}</Text>
             <Text style={styles.waveValue}>{hudWave}/{TOTAL_WAVES}</Text>
           </View>
           <View style={styles.statsRow}>
@@ -147,7 +149,7 @@ export default function GameScreen({ onQuitToMenu }: Props) {
           accessibilityLabel={buildMode ? 'Cancel build' : 'Build tower'}
         >
           <Text style={styles.buildBtnText}>
-            {buildMode ? '✕ Cancel Build' : `🗼 Build Tower · ${TOWER_COST} 💰`}
+            {buildMode ? t.cancelBuild : `${t.buildTower} · ${TOWER_COST} 💰`}
           </Text>
         </TouchableOpacity>
       </View>
@@ -165,7 +167,7 @@ export default function GameScreen({ onQuitToMenu }: Props) {
         <View style={styles.overlay}>
           <View style={styles.panel}>
             <Text style={styles.panelIcon}>🏆</Text>
-            <Text style={styles.panelTitle}>VICTORY!</Text>
+            <Text style={styles.panelTitle}>{t.victoryTitle}</Text>
             <View style={styles.panelDivider} />
             <Text style={styles.panelStat}>
               Enemies defeated:{' '}
@@ -199,7 +201,7 @@ export default function GameScreen({ onQuitToMenu }: Props) {
         <View style={styles.overlay}>
           <View style={styles.panel}>
             <Text style={styles.panelIcon}>💀</Text>
-            <Text style={styles.panelTitle}>GAME OVER</Text>
+            <Text style={styles.panelTitle}>{t.gameOverTitle}</Text>
             <View style={styles.panelDivider} />
             <Text style={styles.panelStat}>
               Enemies defeated:{' '}

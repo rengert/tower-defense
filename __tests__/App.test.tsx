@@ -26,6 +26,17 @@ jest.mock('expo-status-bar', () => ({
   StatusBar: () => null,
 }));
 
+// Provide a stable English locale so language-dependent UI text is predictable.
+jest.mock('expo-localization', () => ({
+  getLocales: () => [{ languageTag: 'en-US', languageCode: 'en' }],
+}));
+
+// Provide a no-op AsyncStorage so the persisted language preference is null by default.
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  getItem: jest.fn().mockResolvedValue(null),
+  setItem: jest.fn().mockResolvedValue(undefined),
+}));
+
 describe('App', () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -135,5 +146,45 @@ describe('GameScreen tower building', () => {
     expect(screen.getByText(String(STARTING_GOLD - TOWER_COST))).toBeTruthy();
     // Build mode is cancelled automatically after placement
     expect(screen.getByLabelText('Build tower')).toBeTruthy();
+  });
+});
+
+describe('SettingsScreen', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    render(<App />);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('renders the Open Settings button on the start menu', () => {
+    expect(screen.getByLabelText('Open Settings')).toBeTruthy();
+  });
+
+  it('navigates to the settings screen when Settings is pressed', () => {
+    fireEvent.press(screen.getByLabelText('Open Settings'));
+    expect(screen.getByText('SETTINGS')).toBeTruthy();
+  });
+
+  it('shows language buttons in the settings screen', () => {
+    fireEvent.press(screen.getByLabelText('Open Settings'));
+    expect(screen.getByLabelText('Deutsch')).toBeTruthy();
+    expect(screen.getByLabelText('English')).toBeTruthy();
+  });
+
+  it('returns to the start menu when Back is pressed in settings', () => {
+    fireEvent.press(screen.getByLabelText('Open Settings'));
+    fireEvent.press(screen.getByLabelText('← Back'));
+    expect(screen.getByLabelText('Start Game')).toBeTruthy();
+    expect(screen.queryByText('SETTINGS')).toBeNull();
+  });
+
+  it('switches to German and updates the subtitle', async () => {
+    fireEvent.press(screen.getByLabelText('Open Settings'));
+    fireEvent.press(screen.getByLabelText('Deutsch'));
+    fireEvent.press(screen.getByLabelText('← Zurück'));
+    expect(screen.getByText('Strategisch · Taktisch · Befriedigend')).toBeTruthy();
   });
 });

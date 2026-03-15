@@ -1,18 +1,22 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useLanguage } from './i18n/LanguageContext';
 
 interface Props {
   onStartGame: () => void;
+  onOpenSettings: () => void;
 }
 
-export default function StartMenuScreen({ onStartGame }: Props) {
+export default function StartMenuScreen({ onStartGame, onOpenSettings }: Props) {
+  const { t } = useLanguage();
+
   return (
     <View style={styles.container}>
       <View style={styles.heroSection}>
         <Text style={styles.towerIcon}>🗼</Text>
         <Text style={styles.title}>TOWER{'\n'}DEFENSE</Text>
         <View style={styles.divider} />
-        <Text style={styles.subtitle}>Strategic · Tactical · Satisfying</Text>
+        <Text style={styles.subtitle}>{t.startMenuSubtitle}</Text>
       </View>
 
       <View style={styles.actionSection}>
@@ -22,9 +26,17 @@ export default function StartMenuScreen({ onStartGame }: Props) {
           accessibilityRole="button"
           accessibilityLabel="Start Game"
         >
-          <Text style={styles.startButtonText}>▶ Start Game</Text>
+          <Text style={styles.startButtonText}>{t.startButton}</Text>
         </TouchableOpacity>
-        <Text style={styles.hint}>Place towers · Survive waves · Defend your base</Text>
+        <TouchableOpacity
+          style={styles.settingsButton}
+          onPress={onOpenSettings}
+          accessibilityRole="button"
+          accessibilityLabel="Open Settings"
+        >
+          <Text style={styles.settingsButtonText}>{t.settingsButton}</Text>
+        </TouchableOpacity>
+        <Text style={styles.hint}>{t.startHint}</Text>
       </View>
     </View>
   );
@@ -86,6 +98,21 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#0d1017',
     letterSpacing: 1,
+  },
+  settingsButton: {
+    backgroundColor: 'transparent',
+    paddingVertical: 13,
+    borderRadius: 14,
+    width: '100%',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(245,200,66,0.4)',
+  },
+  settingsButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#f5c842',
+    letterSpacing: 0.5,
   },
   hint: {
     fontSize: 12,
