@@ -20,7 +20,7 @@ export default function PauseMenuScreen({ onResume, onQuitToMenu }: Props) {
           style={styles.resumeButton}
           onPress={onResume}
           accessibilityRole="button"
-          accessibilityLabel={t.resumeButton}
+          accessibilityLabel={t.resumeGameA11y}
         >
           <Text style={styles.resumeButtonText}>{t.resumeButton}</Text>
         </TouchableOpacity>
@@ -28,7 +28,7 @@ export default function PauseMenuScreen({ onResume, onQuitToMenu }: Props) {
           style={styles.quitButton}
           onPress={onQuitToMenu}
           accessibilityRole="button"
-          accessibilityLabel={t.quitToMenuButton}
+          accessibilityLabel={t.quitToMenuA11y}
         >
           <Text style={styles.quitButtonText}>{t.quitToMenuButton}</Text>
         </TouchableOpacity>

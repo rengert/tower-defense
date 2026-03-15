@@ -47,7 +47,7 @@ export default function SettingsScreen({ onBack }: Props) {
           style={styles.backButton}
           onPress={onBack}
           accessibilityRole="button"
-          accessibilityLabel={t.backButton}
+          accessibilityLabel={t.backA11y}
         >
           <Text style={styles.backButtonText}>{t.backButton}</Text>
         </TouchableOpacity>

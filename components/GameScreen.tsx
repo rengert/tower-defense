@@ -110,7 +110,7 @@ export default function GameScreen({ onQuitToMenu }: Props) {
             style={styles.pauseButton}
             onPress={() => setPaused(true)}
             accessibilityRole="button"
-            accessibilityLabel="Pause game"
+            accessibilityLabel={t.pauseGameA11y}
           >
             <Text style={styles.pauseButtonText}>⏸</Text>
           </TouchableOpacity>
@@ -146,7 +146,7 @@ export default function GameScreen({ onQuitToMenu }: Props) {
           style={[styles.buildBtn, buildMode && styles.buildBtnActive]}
           onPress={() => setBuildMode((m) => !m)}
           accessibilityRole="button"
-          accessibilityLabel={buildMode ? 'Cancel build' : 'Build tower'}
+          accessibilityLabel={buildMode ? t.cancelBuildA11y : t.buildTowerA11y}
         >
           <Text style={styles.buildBtnText}>
             {buildMode ? t.cancelBuild : `${t.buildTower} · ${TOWER_COST} 💰`}
@@ -180,17 +180,17 @@ export default function GameScreen({ onQuitToMenu }: Props) {
               style={styles.panelBtn}
               onPress={handleRestart}
               accessibilityRole="button"
-              accessibilityLabel="Play Again"
+              accessibilityLabel={t.playAgainA11y}
             >
-              <Text style={styles.panelBtnText}>▶ Play Again</Text>
+              <Text style={styles.panelBtnText}>▶ {t.playAgain}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.panelBtnSecondary}
               onPress={onQuitToMenu}
               accessibilityRole="button"
-              accessibilityLabel="Main Menu"
+              accessibilityLabel={t.mainMenuA11y}
             >
-              <Text style={styles.panelBtnSecondaryText}>Main Menu</Text>
+              <Text style={styles.panelBtnSecondaryText}>{t.backToMenu}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -215,17 +215,17 @@ export default function GameScreen({ onQuitToMenu }: Props) {
               style={styles.panelBtn}
               onPress={handleRestart}
               accessibilityRole="button"
-              accessibilityLabel="Try Again"
+              accessibilityLabel={t.tryAgainA11y}
             >
-              <Text style={styles.panelBtnText}>↺ Try Again</Text>
+              <Text style={styles.panelBtnText}>↺ {t.playAgain}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.panelBtnSecondary}
               onPress={onQuitToMenu}
               accessibilityRole="button"
-              accessibilityLabel="Main Menu"
+              accessibilityLabel={t.mainMenuA11y}
             >
-              <Text style={styles.panelBtnSecondaryText}>Main Menu</Text>
+              <Text style={styles.panelBtnSecondaryText}>{t.backToMenu}</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 import { type Language, TRANSLATIONS, resolveLanguage, type Translations } from './translations';
@@ -28,10 +29,14 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     return resolveLanguage(deviceLocale);
   });
 
+  // Track whether the user has explicitly chosen a language to avoid hydration
+  // overwriting a newer user-initiated selection.
+  const userChangedRef = useRef(false);
+
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
       .then((saved) => {
-        if (saved === 'de' || saved === 'en') {
+        if (!userChangedRef.current && (saved === 'de' || saved === 'en')) {
           setLanguageState(saved);
         }
       })
@@ -43,6 +48,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setLanguage = useCallback(async (lang: Language) => {
+    userChangedRef.current = true;
     setLanguageState(lang);
     try {
       await AsyncStorage.setItem(STORAGE_KEY, lang);

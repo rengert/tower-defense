@@ -176,7 +176,7 @@ describe('SettingsScreen', () => {
 
   it('returns to the start menu when Back is pressed in settings', () => {
     fireEvent.press(screen.getByLabelText('Open Settings'));
-    fireEvent.press(screen.getByLabelText('← Back'));
+    fireEvent.press(screen.getByLabelText('Back'));
     expect(screen.getByLabelText('Start Game')).toBeTruthy();
     expect(screen.queryByText('SETTINGS')).toBeNull();
   });
@@ -184,7 +184,7 @@ describe('SettingsScreen', () => {
   it('switches to German and updates the subtitle', async () => {
     fireEvent.press(screen.getByLabelText('Open Settings'));
     fireEvent.press(screen.getByLabelText('Deutsch'));
-    fireEvent.press(screen.getByLabelText('← Zurück'));
+    fireEvent.press(screen.getByLabelText('Zurück'));
     expect(screen.getByText('Strategisch · Taktisch · Befriedigend')).toBeTruthy();
   });
 });

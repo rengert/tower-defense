@@ -33,6 +33,19 @@ export interface Translations {
   playAgain: string;
   backToMenu: string;
   finalScore: string;
+
+  // Accessibility labels (no emoji, action-oriented)
+  startGameA11y: string;
+  openSettingsA11y: string;
+  backA11y: string;
+  resumeGameA11y: string;
+  quitToMenuA11y: string;
+  pauseGameA11y: string;
+  buildTowerA11y: string;
+  cancelBuildA11y: string;
+  playAgainA11y: string;
+  mainMenuA11y: string;
+  tryAgainA11y: string;
 }
 
 const en: Translations = {
@@ -63,6 +76,18 @@ const en: Translations = {
   playAgain: 'Play Again',
   backToMenu: 'Back to Menu',
   finalScore: 'You survived',
+
+  startGameA11y: 'Start Game',
+  openSettingsA11y: 'Open Settings',
+  backA11y: 'Back',
+  resumeGameA11y: 'Resume game',
+  quitToMenuA11y: 'Quit to Menu',
+  pauseGameA11y: 'Pause game',
+  buildTowerA11y: 'Build tower',
+  cancelBuildA11y: 'Cancel build',
+  playAgainA11y: 'Play Again',
+  mainMenuA11y: 'Main Menu',
+  tryAgainA11y: 'Try Again',
 };
 
 const de: Translations = {
@@ -88,11 +113,23 @@ const de: Translations = {
   cancelBuild: '✕ Abbrechen',
   pause: '⏸',
 
-  gameOverTitle: 'GAME OVER',
+  gameOverTitle: 'NIEDERLAGE',
   victoryTitle: 'SIEG!',
   playAgain: 'Nochmal spielen',
   backToMenu: 'Zum Menü',
   finalScore: 'Du hast überlebt',
+
+  startGameA11y: 'Spiel starten',
+  openSettingsA11y: 'Einstellungen öffnen',
+  backA11y: 'Zurück',
+  resumeGameA11y: 'Spiel fortsetzen',
+  quitToMenuA11y: 'Zum Menü',
+  pauseGameA11y: 'Spiel pausieren',
+  buildTowerA11y: 'Turm bauen',
+  cancelBuildA11y: 'Bau abbrechen',
+  playAgainA11y: 'Nochmal spielen',
+  mainMenuA11y: 'Zum Menü',
+  tryAgainA11y: 'Nochmal versuchen',
 };
 
 export const TRANSLATIONS: Record<Language, Translations> = { en, de };
