@@ -1,6 +1,9 @@
 /** Visual sprite variant for an enemy, assigned at spawn time. */
 export type EnemyType = 'goblin' | 'orc' | 'skeleton';
 
+/** Visual sprite variant for a tower, assigned at placement time. */
+export type TowerType = 'archer' | 'cannon' | 'magic';
+
 export interface Enemy {
   id: number;
   /** Float column position along PATH_ROW (left = 0, right = GRID_COLS). */
@@ -17,6 +20,8 @@ export interface Tower {
   col: number;
   /** Remaining attack cooldown in ms. 0 means ready to fire. */
   cooldownMs: number;
+  /** Kenney sprite type assigned at placement time. */
+  towerType?: TowerType;
 }
 
 export type GameStatus = 'playing' | 'won' | 'lost';

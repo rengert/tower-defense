@@ -23,6 +23,14 @@ const ENEMY_SPRITES = {
   skeleton: require('../assets/enemies/skeleton.png'),
 } as const;
 
+// ── Kenney tower sprites (CC-0 pixel art, 32×32 RGBA PNG) ──────────────────
+const DEFAULT_TOWER_TYPE = 'archer' as const;
+const TOWER_SPRITES = {
+  archer: require('../assets/towers/archer.png'),
+  cannon: require('../assets/towers/cannon.png'),
+  magic:  require('../assets/towers/magic.png'),
+} as const;
+
 interface Props {
   /** Called on every game-loop tick so the parent can update HUD / overlay state. */
   onTick: (dtMs: number) => void;
@@ -62,9 +70,6 @@ const C = {
   pathRow: '#2a2010',
   towerCell: '#0a2018',
   buildHighlight: '#0d3020',
-  tower: '#3dba78',
-  towerRing: '#2a9060',
-  towerAccent: '#f5c842',
   hpFull: '#4ade80',
   hpLow: '#fb923c',
   hpEmpty: '#ef4444',
@@ -233,60 +238,28 @@ export default function PixiGameRenderer({
         ))}
 
         {state.towers.map((tower) => {
-          const cx = tower.col * dims.cellW + dims.cellW / 2;
-          const cy = tower.row * dims.cellH + dims.cellH / 2;
-          const r = Math.min(dims.cellW, dims.cellH) * 0.35;
-          const ringR = r + 3;
+          const padding = dims.cellH * 0.05;
+          const x = tower.col * dims.cellW + padding;
+          const y = tower.row * dims.cellH + padding;
+          const w = dims.cellW - padding * 2;
+          const h = dims.cellH - padding * 2;
+          const sprite = TOWER_SPRITES[tower.towerType ?? DEFAULT_TOWER_TYPE];
           return (
-            <React.Fragment key={`tower-${tower.id}`}>
-              {/* Outer ring */}
-              <View
-                pointerEvents="none"
-                style={[
-                  styles.tower,
-                  {
-                    left: cx - ringR,
-                    top: cy - ringR,
-                    width: ringR * 2,
-                    height: ringR * 2,
-                    borderRadius: ringR,
-                    borderWidth: 1.5,
-                    borderColor: C.towerRing,
-                    backgroundColor: 'transparent',
-                  },
-                ]}
-              />
-              {/* Main body */}
-              <View
-                pointerEvents="none"
-                style={[
-                  styles.tower,
-                  {
-                    left: cx - r,
-                    top: cy - r,
-                    width: r * 2,
-                    height: r * 2,
-                    borderRadius: r,
-                    backgroundColor: C.tower,
-                  },
-                ]}
-              />
-              {/* Accent dot */}
-              <View
-                pointerEvents="none"
-                style={[
-                  styles.tower,
-                  {
-                    left: cx - r * 0.38,
-                    top: cy - r * 0.38,
-                    width: r * 0.76,
-                    height: r * 0.76,
-                    borderRadius: r * 0.38,
-                    backgroundColor: C.towerAccent,
-                  },
-                ]}
-              />
-            </React.Fragment>
+            <Image
+              key={`tower-${tower.id}`}
+              source={sprite}
+              pointerEvents="none"
+              style={[
+                styles.tower,
+                {
+                  left: x,
+                  top: y,
+                  width: w,
+                  height: h,
+                },
+              ]}
+              resizeMode="contain"
+            />
           );
         })}
 
