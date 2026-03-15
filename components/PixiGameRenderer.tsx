@@ -5,7 +5,7 @@
  * Keeps the same public API so GameScreen does not need to change.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import { Image, LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
 import {
   GRID_COLS,
   GRID_ROWS,
@@ -14,6 +14,14 @@ import {
   TOWER_RANGE,
 } from './game/constants';
 import type { GameState } from './game/types';
+
+// ── Kenney enemy sprites (CC-0 pixel art, 32×32 RGBA PNG) ──────────────────
+const DEFAULT_ENEMY_TYPE = 'goblin' as const;
+const ENEMY_SPRITES = {
+  goblin:   require('../assets/enemies/goblin.png'),
+  orc:      require('../assets/enemies/orc.png'),
+  skeleton: require('../assets/enemies/skeleton.png'),
+} as const;
 
 interface Props {
   /** Called on every game-loop tick so the parent can update HUD / overlay state. */
@@ -57,8 +65,6 @@ const C = {
   tower: '#3dba78',
   towerRing: '#2a9060',
   towerAccent: '#f5c842',
-  enemy: '#dc3545',
-  enemyBorder: '#ff6070',
   hpFull: '#4ade80',
   hpLow: '#fb923c',
   hpEmpty: '#ef4444',
@@ -294,10 +300,12 @@ export default function PixiGameRenderer({
           const w = dims.cellW - padding * 2;
           const hpRatio = Math.max(0, enemy.health / enemy.maxHealth);
           const hpColor = hpRatio > 0.5 ? C.hpFull : hpRatio > 0.25 ? C.hpLow : C.hpEmpty;
+          const sprite = ENEMY_SPRITES[enemy.enemyType ?? DEFAULT_ENEMY_TYPE];
 
           return (
             <React.Fragment key={`enemy-${enemy.id}`}>
-              <View
+              <Image
+                source={sprite}
                 pointerEvents="none"
                 style={[
                   styles.enemy,
@@ -306,11 +314,9 @@ export default function PixiGameRenderer({
                     top: pathY + padding,
                     width: w,
                     height: enemyH,
-                    backgroundColor: C.enemy,
-                    borderColor: C.enemyBorder,
-                    borderWidth: 1,
                   },
                 ]}
+                resizeMode="contain"
               />
               <View
                 pointerEvents="none"
@@ -358,7 +364,6 @@ const styles = StyleSheet.create({
   },
   enemy: {
     position: 'absolute',
-    borderRadius: 4,
   },
   hpBar: {
     position: 'absolute',
