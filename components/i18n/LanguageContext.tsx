@@ -44,7 +44,13 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const setLanguage = useCallback(async (lang: Language) => {
     setLanguageState(lang);
-    await AsyncStorage.setItem(STORAGE_KEY, lang);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, lang);
+    } catch (err) {
+      if (__DEV__) {
+        console.warn('[LanguageContext] Failed to save language preference:', err);
+      }
+    }
   }, []);
 
   const value: LanguageContextValue = {
