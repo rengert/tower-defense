@@ -35,8 +35,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
           setLanguageState(saved);
         }
       })
-      .catch(() => {
-        // If reading fails we keep the device-locale default.
+      .catch((err) => {
+        if (__DEV__) {
+          console.warn('[LanguageContext] Failed to load saved language:', err);
+        }
       });
   }, []);
 

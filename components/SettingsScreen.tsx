@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useLanguage } from './i18n/LanguageContext';
-import type { Language } from './i18n/translations';
 
 interface Props {
   onBack: () => void;
@@ -9,10 +8,6 @@ interface Props {
 
 export default function SettingsScreen({ onBack }: Props) {
   const { language, t, setLanguage } = useLanguage();
-
-  const handleLanguageSelect = async (lang: Language) => {
-    await setLanguage(lang);
-  };
 
   return (
     <View style={styles.container}>
@@ -25,7 +20,7 @@ export default function SettingsScreen({ onBack }: Props) {
         <View style={styles.languageRow}>
           <TouchableOpacity
             style={[styles.langButton, language === 'de' && styles.langButtonActive]}
-            onPress={() => handleLanguageSelect('de')}
+            onPress={() => setLanguage('de')}
             accessibilityRole="button"
             accessibilityLabel={t.languageGerman}
             accessibilityState={{ selected: language === 'de' }}
@@ -37,7 +32,7 @@ export default function SettingsScreen({ onBack }: Props) {
 
           <TouchableOpacity
             style={[styles.langButton, language === 'en' && styles.langButtonActive]}
-            onPress={() => handleLanguageSelect('en')}
+            onPress={() => setLanguage('en')}
             accessibilityRole="button"
             accessibilityLabel={t.languageEnglish}
             accessibilityState={{ selected: language === 'en' }}

@@ -51,7 +51,7 @@ const en: Translations = {
   resumeButton: '▶ Resume',
   quitToMenuButton: 'Quit to Menu',
 
-  wave: 'Wave',
+  wave: 'WAVE',
   lives: 'Lives',
   gold: 'Gold',
   buildTower: '🏗 Build Tower',
@@ -81,7 +81,7 @@ const de: Translations = {
   resumeButton: '▶ Weiterspielen',
   quitToMenuButton: 'Zum Menü',
 
-  wave: 'Welle',
+  wave: 'WELLE',
   lives: 'Leben',
   gold: 'Gold',
   buildTower: '🏗 Turm bauen',

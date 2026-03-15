@@ -93,7 +93,7 @@ export default function GameScreen({ onQuitToMenu }: Props) {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <View style={styles.waveBadge}>
-            <Text style={styles.waveLabel}>{t.wave.toUpperCase()}</Text>
+            <Text style={styles.waveLabel}>{t.wave}</Text>
             <Text style={styles.waveValue}>{hudWave}/{TOTAL_WAVES}</Text>
           </View>
           <View style={styles.statsRow}>
