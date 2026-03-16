@@ -1,5 +1,5 @@
 import {
-  bfsPath,
+  findShortestPath,
   canPlaceTower,
   createInitialState,
   placeTower,
@@ -36,9 +36,9 @@ describe('createInitialState', () => {
   });
 });
 
-describe('bfsPath', () => {
+describe('findShortestPath', () => {
   it('returns a straight path when no towers are present', () => {
-    const path = bfsPath([]);
+    const path = findShortestPath([]);
     expect(path).not.toBeNull();
     expect(path![0]).toEqual({ row: PATH_ROW, col: 0 });
     expect(path![path!.length - 1]).toEqual({ row: PATH_ROW, col: GRID_COLS - 1 });
@@ -49,32 +49,32 @@ describe('bfsPath', () => {
   it('finds a detour when PATH_ROW is partially blocked', () => {
     // Block the middle of PATH_ROW
     const towers: Tower[] = [{ id: 1, row: PATH_ROW, col: 5, cooldownMs: 0 }];
-    const path = bfsPath(towers);
+    const path = findShortestPath(towers);
     expect(path).not.toBeNull();
     // Path must go through a different row to bypass the blocked cell
-    const usesDetour = path!.some((p) => p.row !== PATH_ROW);
+    const usesDetour = path!.some((point) => point.row !== PATH_ROW);
     expect(usesDetour).toBe(true);
   });
 
   it('returns null when all cells of a column are blocked', () => {
     // Block every row at col 5 – no way through
-    const towers: Tower[] = Array.from({ length: GRID_ROWS }, (_, r) => ({
-      id: r,
-      row: r,
+    const towers: Tower[] = Array.from({ length: GRID_ROWS }, (_, rowIndex) => ({
+      id: rowIndex,
+      row: rowIndex,
       col: 5,
       cooldownMs: 0,
     }));
-    expect(bfsPath(towers)).toBeNull();
+    expect(findShortestPath(towers)).toBeNull();
   });
 
   it('returns null when the start cell is blocked', () => {
     const towers: Tower[] = [{ id: 1, row: PATH_ROW, col: 0, cooldownMs: 0 }];
-    expect(bfsPath(towers)).toBeNull();
+    expect(findShortestPath(towers)).toBeNull();
   });
 
   it('returns null when the end cell is blocked', () => {
     const towers: Tower[] = [{ id: 1, row: PATH_ROW, col: GRID_COLS - 1, cooldownMs: 0 }];
-    expect(bfsPath(towers)).toBeNull();
+    expect(findShortestPath(towers)).toBeNull();
   });
 });
 

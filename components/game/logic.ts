@@ -34,13 +34,13 @@ const WAVE_ENEMY_TYPE: Record<number, EnemyType> = {
 const TOWER_TYPES: TowerType[] = ['archer', 'cannon', 'magic'];
 
 /** Off-screen column where enemies spawn (to the left of the grid). */
-const ENEMY_SPAWN_COL = -1;
+const ENEMY_SPAWN_COLUMN = -1;
 
 /** Sentinel ID used for hypothetical towers during path validation. */
 const HYPOTHETICAL_TOWER_ID = -1;
 
-/** BFS traversal order: right first so the default path goes straight along PATH_ROW. */
-const NEIGHBOR_DIRS: ReadonlyArray<readonly [number, number]> = [
+/** Traversal order for the pathfinding BFS: right first so the default path goes straight along PATH_ROW. */
+const NEIGHBOR_DIRECTIONS: ReadonlyArray<readonly [number, number]> = [
   [0, 1],   // right
   [0, -1],  // left
   [-1, 0],  // up
@@ -48,12 +48,12 @@ const NEIGHBOR_DIRS: ReadonlyArray<readonly [number, number]> = [
 ];
 
 /**
- * BFS shortest path from (PATH_ROW, 0) to (PATH_ROW, GRID_COLS-1),
- * avoiding cells occupied by towers.
+ * Finds the shortest path from (PATH_ROW, 0) to (PATH_ROW, GRID_COLS-1),
+ * avoiding cells occupied by towers, using breadth-first search.
  * Returns an array of grid cells from start to end, or null if no path exists.
  */
-export function bfsPath(towers: Tower[]): GridPoint[] | null {
-  const blocked = new Set(towers.map((t) => `${t.row},${t.col}`));
+export function findShortestPath(towers: Tower[]): GridPoint[] | null {
+  const blocked = new Set(towers.map((tower) => `${tower.row},${tower.col}`));
 
   const startRow = PATH_ROW;
   const startCol = 0;
@@ -64,16 +64,16 @@ export function bfsPath(towers: Tower[]): GridPoint[] | null {
     return null;
   }
 
-  type BFSNode = { row: number; col: number; parent: BFSNode | null };
-  const start: BFSNode = { row: startRow, col: startCol, parent: null };
-  const queue: BFSNode[] = [start];
+  type PathNode = { row: number; col: number; parent: PathNode | null };
+  const start: PathNode = { row: startRow, col: startCol, parent: null };
+  const queue: PathNode[] = [start];
   const visited = new Set<string>([`${startRow},${startCol}`]);
 
   while (queue.length > 0) {
     const current = queue.shift()!;
     if (current.row === endRow && current.col === endCol) {
       const path: GridPoint[] = [];
-      let node: BFSNode | null = current;
+      let node: PathNode | null = current;
       while (node !== null) {
         path.unshift({ row: node.row, col: node.col });
         node = node.parent;
@@ -82,14 +82,14 @@ export function bfsPath(towers: Tower[]): GridPoint[] | null {
     }
 
     // Prefer moving right to get a natural straight-line default path
-    for (const [dr, dc] of NEIGHBOR_DIRS) {
-      const nr = current.row + dr;
-      const nc = current.col + dc;
-      if (nr < 0 || nr >= GRID_ROWS || nc < 0 || nc >= GRID_COLS) continue;
-      const key = `${nr},${nc}`;
+    for (const [deltaRow, deltaColumn] of NEIGHBOR_DIRECTIONS) {
+      const neighborRow = current.row + deltaRow;
+      const neighborColumn = current.col + deltaColumn;
+      if (neighborRow < 0 || neighborRow >= GRID_ROWS || neighborColumn < 0 || neighborColumn >= GRID_COLS) continue;
+      const key = `${neighborRow},${neighborColumn}`;
       if (visited.has(key) || blocked.has(key)) continue;
       visited.add(key);
-      queue.push({ row: nr, col: nc, parent: current });
+      queue.push({ row: neighborRow, col: neighborColumn, parent: current });
     }
   }
 
@@ -98,18 +98,18 @@ export function bfsPath(towers: Tower[]): GridPoint[] | null {
 
 /**
  * Build the full traversal path, including the off-screen entry and exit cells.
- * Falls back to a straight line if bfsPath returns null (should not happen in
+ * Falls back to a straight line if findShortestPath returns null (should not happen in
  * normal play because canPlaceTower prevents total path blocking).
  */
 function buildFullPath(towers: Tower[]): GridPoint[] {
-  const core = bfsPath(towers);
-  const fallback: GridPoint[] = Array.from({ length: GRID_COLS }, (_, c) => ({
+  const core = findShortestPath(towers);
+  const fallback: GridPoint[] = Array.from({ length: GRID_COLS }, (_, column) => ({
     row: PATH_ROW,
-    col: c,
+    col: column,
   }));
   const pathCells = core ?? fallback;
   return [
-    { row: PATH_ROW, col: ENEMY_SPAWN_COL },
+    { row: PATH_ROW, col: ENEMY_SPAWN_COLUMN },
     ...pathCells,
     { row: PATH_ROW, col: GRID_COLS },
   ];
@@ -119,13 +119,13 @@ function buildFullPath(towers: Tower[]): GridPoint[] {
 function positionOnPath(fullPath: GridPoint[], progress: number): GridPoint {
   const maxProgress = fullPath.length - 1;
   if (progress >= maxProgress) return fullPath[maxProgress];
-  const i = Math.floor(progress);
-  const t = progress - i;
-  const a = fullPath[i];
-  const b = fullPath[i + 1];
+  const segmentIndex = Math.floor(progress);
+  const interpolationFactor = progress - segmentIndex;
+  const fromPoint = fullPath[segmentIndex];
+  const toPoint = fullPath[segmentIndex + 1];
   return {
-    row: a.row + (b.row - a.row) * t,
-    col: a.col + (b.col - a.col) * t,
+    row: fromPoint.row + (toPoint.row - fromPoint.row) * interpolationFactor,
+    col: fromPoint.col + (toPoint.col - fromPoint.col) * interpolationFactor,
   };
 }
 
@@ -185,21 +185,21 @@ export function tickGame(prev: GameState, dtMs: number = TICK_MS): GameState {
     const enemyType: EnemyType = WAVE_ENEMY_TYPE[wave] ?? 'goblin';
     enemies = [
       ...enemies,
-      { id: nextEnemyId++, col: ENEMY_SPAWN_COL, row: PATH_ROW, pathProgress: 0, health, maxHealth: health, enemyType },
+      { id: nextEnemyId++, col: ENEMY_SPAWN_COLUMN, row: PATH_ROW, pathProgress: 0, health, maxHealth: health, enemyType },
     ];
     enemiesSpawned++;
     lastSpawnMs = elapsedMs;
   }
 
-  // ── Move enemies along the BFS path ──────────────────────────────────────
+  // ── Move enemies along the shortest path ──────────────────────────────────
   const fullPath = buildFullPath(towers);
-  const colsPerMs = ENEMY_SPEED / 1000;
-  enemies = enemies.map((e) => {
+  const columnsPerMillisecond = ENEMY_SPEED / 1000;
+  enemies = enemies.map((enemy) => {
     // Backward-compat: if an enemy has no pathProgress, derive it from col.
-    const prevProgress = e.pathProgress ?? (e.col - ENEMY_SPAWN_COL);
-    const progress = prevProgress + colsPerMs * dtMs;
-    const pos = positionOnPath(fullPath, progress);
-    return { ...e, col: pos.col, row: pos.row, pathProgress: progress };
+    const previousProgress = enemy.pathProgress ?? (enemy.col - ENEMY_SPAWN_COLUMN);
+    const progress = previousProgress + columnsPerMillisecond * dtMs;
+    const position = positionOnPath(fullPath, progress);
+    return { ...enemy, col: position.col, row: position.row, pathProgress: progress };
   });
 
   // ── Enemies reaching the exit ─────────────────────────────────────────────
@@ -301,13 +301,13 @@ export function canPlaceTower(
   col: number
 ): boolean {
   if (state.gold < TOWER_COST) return false;
-  if (state.towers.some((t) => t.row === row && t.col === col)) return false;
+  if (state.towers.some((tower) => tower.row === row && tower.col === col)) return false;
   // Only allow placement when a valid path still exists after the tower is added.
   const hypothetical: Tower[] = [
     ...state.towers,
     { id: HYPOTHETICAL_TOWER_ID, row, col, cooldownMs: 0 },
   ];
-  return bfsPath(hypothetical) !== null;
+  return findShortestPath(hypothetical) !== null;
 }
 
 /** Returns a new state with the tower placed (or the same state if invalid). */

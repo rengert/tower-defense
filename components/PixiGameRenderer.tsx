@@ -13,7 +13,7 @@ import {
   TOWER_COST,
   TOWER_RANGE,
 } from './game/constants';
-import { bfsPath } from './game/logic';
+import { findShortestPath } from './game/logic';
 import type { GameState } from './game/types';
 
 // ── Kenney enemy sprites (CC-0 pixel art, 32×32 RGBA PNG) ──────────────────
@@ -177,9 +177,9 @@ export default function PixiGameRenderer({
   const cells = useMemo(() => {
     const list: Array<{ key: string; x: number; y: number; color: string }> = [];
     const towerSet = new Set(state.towers.map((t) => `${t.row},${t.col}`));
-    const currentPath = bfsPath(state.towers);
+    const currentPath = findShortestPath(state.towers);
     const pathSet = currentPath
-      ? new Set(currentPath.map((p) => `${p.row},${p.col}`))
+      ? new Set(currentPath.map((point) => `${point.row},${point.col}`))
       : new Set<string>();
     for (let r = 0; r < GRID_ROWS; r++) {
       for (let c = 0; c < GRID_COLS; c++) {
