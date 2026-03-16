@@ -17,7 +17,7 @@ import {
   TOWER_RANGE,
   WAVE_BREAK_MS,
 } from './constants';
-import type { Enemy, EnemyType, GameState, Tower } from './types';
+import type { Enemy, EnemyType, GameState, Tower, TowerType } from './types';
 
 /** Maps wave number to the Kenney enemy sprite used in that wave. */
 const WAVE_ENEMY_TYPE: Record<number, EnemyType> = {
@@ -25,6 +25,9 @@ const WAVE_ENEMY_TYPE: Record<number, EnemyType> = {
   2: 'orc',
   3: 'skeleton',
 };
+
+/** Kenney tower sprite types cycled through as towers are placed. */
+const TOWER_TYPES: TowerType[] = ['archer', 'cannon', 'magic'];
 
 export function createInitialState(): GameState {
   return {
@@ -202,11 +205,13 @@ export function placeTower(
   col: number
 ): GameState {
   if (!canPlaceTower(state, row, col)) return state;
+  // nextTowerId starts at 1; subtract 1 so the first tower gets index 0 ('archer').
+  const towerType = TOWER_TYPES[(state.nextTowerId - 1) % TOWER_TYPES.length];
   return {
     ...state,
     towers: [
       ...state.towers,
-      { id: state.nextTowerId, row, col, cooldownMs: 0 },
+      { id: state.nextTowerId, row, col, cooldownMs: 0, towerType },
     ],
     gold: state.gold - TOWER_COST,
     nextTowerId: state.nextTowerId + 1,
