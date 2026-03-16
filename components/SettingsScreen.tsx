@@ -41,6 +41,18 @@ export default function SettingsScreen({ onBack }: Props) {
               {t.languageEnglish}
             </Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.langButton, language === 'fr' && styles.langButtonActive]}
+            onPress={() => setLanguage('fr')}
+            accessibilityRole="button"
+            accessibilityLabel={t.languageFrench}
+            accessibilityState={{ selected: language === 'fr' }}
+          >
+            <Text style={[styles.langButtonText, language === 'fr' && styles.langButtonTextActive]}>
+              {t.languageFrench}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <TouchableOpacity

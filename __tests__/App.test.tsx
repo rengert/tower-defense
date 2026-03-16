@@ -172,6 +172,7 @@ describe('SettingsScreen', () => {
     fireEvent.press(screen.getByLabelText('Open Settings'));
     expect(screen.getByLabelText('Deutsch')).toBeTruthy();
     expect(screen.getByLabelText('English')).toBeTruthy();
+    expect(screen.getByLabelText('Français')).toBeTruthy();
   });
 
   it('returns to the start menu when Back is pressed in settings', () => {
@@ -186,5 +187,12 @@ describe('SettingsScreen', () => {
     fireEvent.press(screen.getByLabelText('Deutsch'));
     fireEvent.press(screen.getByLabelText('Zurück'));
     expect(screen.getByText('Strategisch · Taktisch · Befriedigend')).toBeTruthy();
+  });
+
+  it('switches to French and updates the subtitle', async () => {
+    fireEvent.press(screen.getByLabelText('Open Settings'));
+    fireEvent.press(screen.getByLabelText('Français'));
+    fireEvent.press(screen.getByLabelText('Retour'));
+    expect(screen.getByText('Stratégique · Tactique · Satisfaisant')).toBeTruthy();
   });
 });
