@@ -8,7 +8,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { type Language, TRANSLATIONS, resolveLanguage, type Translations } from './translations';
+import { type Language, SUPPORTED_LANGUAGES, TRANSLATIONS, resolveLanguage, type Translations } from './translations';
 
 const STORAGE_KEY = '@tower_defense_language';
 
@@ -36,7 +36,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
       .then((saved) => {
-        if (!userChangedRef.current && (saved === 'de' || saved === 'en')) {
+        if (!userChangedRef.current && saved !== null && (SUPPORTED_LANGUAGES as string[]).includes(saved)) {
           setLanguageState(saved);
         }
       })

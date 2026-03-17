@@ -1,4 +1,4 @@
-export type Language = 'de' | 'en';
+export type Language = 'de' | 'en' | 'fr';
 
 export interface Translations {
   // Start menu
@@ -12,6 +12,7 @@ export interface Translations {
   languageLabel: string;
   languageGerman: string;
   languageEnglish: string;
+  languageFrench: string;
   backButton: string;
 
   // Pause menu
@@ -58,6 +59,7 @@ const en: Translations = {
   languageLabel: 'Language',
   languageGerman: 'Deutsch',
   languageEnglish: 'English',
+  languageFrench: 'Français',
   backButton: '← Back',
 
   pausedTitle: 'PAUSED',
@@ -100,6 +102,7 @@ const de: Translations = {
   languageLabel: 'Sprache',
   languageGerman: 'Deutsch',
   languageEnglish: 'English',
+  languageFrench: 'Français',
   backButton: '← Zurück',
 
   pausedTitle: 'PAUSE',
@@ -132,9 +135,52 @@ const de: Translations = {
   tryAgainA11y: 'Nochmal versuchen',
 };
 
-export const TRANSLATIONS: Record<Language, Translations> = { en, de };
+const fr: Translations = {
+  startMenuSubtitle: 'Stratégique · Tactique · Satisfaisant',
+  startButton: '▶ Jouer',
+  startHint: 'Placez des tours · Survivez aux vagues · Défendez votre base',
+  settingsButton: '⚙ Paramètres',
 
-export const SUPPORTED_LANGUAGES: Language[] = ['en', 'de'];
+  settingsTitle: 'PARAMÈTRES',
+  languageLabel: 'Langue',
+  languageGerman: 'Deutsch',
+  languageEnglish: 'English',
+  languageFrench: 'Français',
+  backButton: '← Retour',
+
+  pausedTitle: 'PAUSE',
+  resumeButton: '▶ Reprendre',
+  quitToMenuButton: 'Quitter',
+
+  wave: 'VAGUE',
+  lives: 'Vies',
+  gold: 'Or',
+  buildTower: '🏗 Construire',
+  cancelBuild: '✕ Annuler',
+  pause: '⏸',
+
+  gameOverTitle: 'DÉFAITE',
+  victoryTitle: 'VICTOIRE !',
+  playAgain: 'Rejouer',
+  backToMenu: 'Menu principal',
+  finalScore: 'Vous avez survécu',
+
+  startGameA11y: 'Jouer',
+  openSettingsA11y: 'Ouvrir les paramètres',
+  backA11y: 'Retour',
+  resumeGameA11y: 'Reprendre la partie',
+  quitToMenuA11y: 'Quitter vers le menu',
+  pauseGameA11y: 'Mettre en pause',
+  buildTowerA11y: 'Construire une tour',
+  cancelBuildA11y: 'Annuler la construction',
+  playAgainA11y: 'Rejouer',
+  mainMenuA11y: 'Menu principal',
+  tryAgainA11y: 'Réessayer',
+};
+
+export const TRANSLATIONS: Record<Language, Translations> = { en, de, fr };
+
+export const SUPPORTED_LANGUAGES: Language[] = ['en', 'de', 'fr'];
 
 /** Map a device locale string (e.g. "de-DE", "en-US") to a supported Language, defaulting to 'en'. */
 export function resolveLanguage(locale: string): Language {
