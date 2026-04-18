@@ -6,6 +6,7 @@ import {
   tickGame,
 } from '../components/game/logic';
 import {
+  AIR_ROW,
   ENEMY_GOLD_REWARD,
   ENEMIES_PER_WAVE,
   GRID_COLS,
@@ -16,9 +17,7 @@ import {
   STARTING_LIVES,
   TICK_MS,
   TOTAL_WAVES,
-  TOWER_COST,
-  TOWER_DAMAGE,
-  TOWER_RANGE,
+  TOWER_STATS,
 } from '../components/game/constants';
 import type { GameState, Tower } from '../components/game/types';
 
@@ -134,8 +133,8 @@ describe('tickGame', () => {
     const state: GameState = {
       ...createInitialState(),
       gold: 0,
-      enemies: [{ id: 1, col: 5, health: TOWER_DAMAGE, maxHealth: 60 }],
-      towers: [{ id: 1, row: PATH_ROW - 1, col: 5, cooldownMs: 0 }],
+      enemies: [{ id: 1, col: 5, health: TOWER_STATS.archer.damage, maxHealth: 60 }],
+      towers: [{ id: 1, row: PATH_ROW - 1, col: 5, cooldownMs: 0, towerType: 'archer' }],
       // Prevent new spawns from interfering
       enemiesSpawned: ENEMIES_PER_WAVE,
     };
@@ -149,7 +148,7 @@ describe('tickGame', () => {
     const state: GameState = {
       ...createInitialState(),
       enemies: [{ id: 1, col: 5, health: 60, maxHealth: 60 }],
-      towers: [{ id: 1, row: PATH_ROW - 1, col: 5, cooldownMs: 500 }],
+      towers: [{ id: 1, row: PATH_ROW - 1, col: 5, cooldownMs: 500, towerType: 'archer' }],
     };
     const next = tickGame(state);
     expect(next.enemies[0].health).toBe(60); // no damage
@@ -160,15 +159,15 @@ describe('tickGame', () => {
     const state: GameState = {
       ...createInitialState(),
       enemies: [{ id: 1, col: 5, health: 60, maxHealth: 60 }],
-      towers: [{ id: 1, row: PATH_ROW - 1, col: 5, cooldownMs: 0 }],
+      towers: [{ id: 1, row: PATH_ROW - 1, col: 5, cooldownMs: 0, towerType: 'archer' }],
     };
     const next = tickGame(state);
     const distToEnemy = Math.sqrt(
       (5 - 5) ** 2 + (PATH_ROW - (PATH_ROW - 1)) ** 2
     );
-    if (distToEnemy <= TOWER_RANGE) {
+    if (distToEnemy <= TOWER_STATS.archer.range) {
       // should have fired
-      expect(next.enemies[0].health).toBe(60 - TOWER_DAMAGE);
+      expect(next.enemies[0].health).toBe(60 - TOWER_STATS.archer.damage);
     }
   });
 
@@ -182,11 +181,63 @@ describe('tickGame', () => {
           row: PATH_ROW - 1,
           col: GRID_COLS - 1,
           cooldownMs: 0,
+          towerType: 'archer',
         },
       ],
     };
     const next = tickGame(state);
     expect(next.enemies[0].health).toBe(60);
+  });
+
+  it('cannon attacks ground enemies but ignores air enemies', () => {
+    const state: GameState = {
+      ...createInitialState(),
+      enemies: [
+        { id: 1, col: 5, row: PATH_ROW, health: 60, maxHealth: 60, category: 'ground', enemyType: 'orc' },
+        { id: 2, col: 5, row: AIR_ROW, health: 60, maxHealth: 60, category: 'air', enemyType: 'harpy' },
+      ],
+      towers: [{ id: 1, row: PATH_ROW - 1, col: 5, cooldownMs: 0, towerType: 'cannon' }],
+      enemiesSpawned: ENEMIES_PER_WAVE,
+    };
+
+    const next = tickGame(state);
+    expect(next.enemies.find((enemy) => enemy.id === 1)?.health).toBe(60 - TOWER_STATS.cannon.damage);
+    expect(next.enemies.find((enemy) => enemy.id === 2)?.health).toBe(60);
+  });
+
+  it('magic attacks air enemies but ignores ground enemies', () => {
+    const state: GameState = {
+      ...createInitialState(),
+      enemies: [
+        { id: 1, col: 5, row: PATH_ROW, health: 60, maxHealth: 60, category: 'ground', enemyType: 'orc' },
+        { id: 2, col: 5, row: AIR_ROW, health: 60, maxHealth: 60, category: 'air', enemyType: 'harpy' },
+      ],
+      towers: [{ id: 1, row: AIR_ROW + 1, col: 5, cooldownMs: 0, towerType: 'magic' }],
+      enemiesSpawned: ENEMIES_PER_WAVE,
+    };
+
+    const next = tickGame(state);
+    expect(next.enemies.find((enemy) => enemy.id === 1)?.health).toBe(60);
+    expect(next.enemies.find((enemy) => enemy.id === 2)?.health).toBe(60 - TOWER_STATS.magic.damage);
+  });
+
+  it('spawns air enemies in later waves on the air row', () => {
+    let state: GameState = {
+      ...createInitialState(),
+      wave: 2,
+      elapsedMs: SPAWN_INTERVAL_MS,
+      lastSpawnMs: 0,
+    };
+
+    state = tickGame(state);
+    state = {
+      ...state,
+      elapsedMs: state.elapsedMs + SPAWN_INTERVAL_MS,
+    };
+    state = tickGame(state);
+
+    expect(state.enemies[1].category).toBe('air');
+    expect(state.enemies[1].row).toBe(AIR_ROW);
   });
 
   it('sets status to lost when lives reach zero', () => {
@@ -238,7 +289,7 @@ describe('canPlaceTower', () => {
   it('returns false when gold is insufficient', () => {
     const state: GameState = {
       ...createInitialState(),
-      gold: TOWER_COST - 1,
+      gold: TOWER_STATS.archer.cost - 1,
     };
     expect(canPlaceTower(state, PATH_ROW - 1, 5)).toBe(false);
   });
@@ -261,8 +312,8 @@ describe('placeTower', () => {
     const state = createInitialState();
     const next = placeTower(state, PATH_ROW - 1, 5);
     expect(next.towers).toHaveLength(1);
-    expect(next.towers[0]).toMatchObject({ row: PATH_ROW - 1, col: 5, cooldownMs: 0 });
-    expect(next.gold).toBe(STARTING_GOLD - TOWER_COST);
+    expect(next.towers[0]).toMatchObject({ row: PATH_ROW - 1, col: 5, cooldownMs: 0, towerType: 'archer' });
+    expect(next.gold).toBe(STARTING_GOLD - TOWER_STATS.archer.cost);
   });
 
   it('returns the same state when placement is invalid', () => {
@@ -275,5 +326,12 @@ describe('placeTower', () => {
     const state = createInitialState();
     const next = placeTower(state, PATH_ROW - 1, 5);
     expect(next.nextTowerId).toBe(state.nextTowerId + 1);
+  });
+
+  it('places a magic tower with its own cost', () => {
+    const state = createInitialState();
+    const next = placeTower(state, PATH_ROW - 1, 6, 'magic');
+    expect(next.towers[0]).toMatchObject({ towerType: 'magic' });
+    expect(next.gold).toBe(STARTING_GOLD - TOWER_STATS.magic.cost);
   });
 });

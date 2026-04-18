@@ -1,5 +1,12 @@
-/** Visual sprite variant for an enemy, assigned at spawn time. */
-export type EnemyType = 'goblin' | 'orc' | 'skeleton';
+/** Category of enemy: walks the ground path or flies in a straight line. */
+export type EnemyCategory = 'ground' | 'air';
+
+/** Ground-enemy sprite variants. */
+export type GroundEnemyType = 'goblin' | 'orc' | 'skeleton';
+/** Air-enemy sprite variants (reuse existing sprites with visual distinction). */
+export type AirEnemyType = 'harpy' | 'wyvern' | 'specter';
+/** All enemy sprite variants. */
+export type EnemyType = GroundEnemyType | AirEnemyType;
 
 /** Visual sprite variant for a tower, assigned at placement time. */
 export type TowerType = 'archer' | 'cannon' | 'magic';
@@ -8,13 +15,18 @@ export interface Enemy {
   id: number;
   /** Float column position (x in grid cells). */
   col: number;
-  /** Float row position (y in grid cells). Defaults to PATH_ROW when not set. */
+  /** Float row position (y in grid cells). Defaults to PATH_ROW/AIR_ROW. */
   row?: number;
   health: number;
   maxHealth: number;
-  /** Kenney sprite type assigned at spawn based on the current wave. */
+  /** Sprite type assigned at spawn based on the current wave. */
   enemyType?: EnemyType;
-  /** Total distance traveled along the current path in cells (0 = entry off-screen). */
+  /**
+   * Whether this enemy walks on the ground path (BFS-routed) or flies in a
+   * straight horizontal line. Defaults to 'ground' when absent.
+   */
+  category?: EnemyCategory;
+  /** Total distance traveled along the current path in cells (ground enemies only). */
   pathProgress?: number;
 }
 
@@ -24,7 +36,7 @@ export interface Tower {
   col: number;
   /** Remaining attack cooldown in ms. 0 means ready to fire. */
   cooldownMs: number;
-  /** Kenney sprite type assigned at placement time. */
+  /** Sprite type assigned at placement time. */
   towerType?: TowerType;
 }
 

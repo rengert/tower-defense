@@ -28,6 +28,14 @@ export interface Translations {
   cancelBuild: string;
   pause: string;
 
+  // Tower build panel
+  towerArcherName: string;
+  towerCannonName: string;
+  towerMagicName: string;
+  towerTargetAll: string;
+  towerTargetGround: string;
+  towerTargetAir: string;
+
   // Game over / win overlays
   gameOverTitle: string;
   victoryTitle: string;
@@ -73,6 +81,13 @@ const en: Translations = {
   cancelBuild: '✕ Cancel',
   pause: '⏸',
 
+  towerArcherName: 'Archer',
+  towerCannonName: 'Cannon',
+  towerMagicName: 'Magic',
+  towerTargetAll: '⚔️+✈️ All',
+  towerTargetGround: '⚔️ Ground',
+  towerTargetAir: '✈️ Air',
+
   gameOverTitle: 'GAME OVER',
   victoryTitle: 'VICTORY!',
   playAgain: 'Play Again',
@@ -116,6 +131,13 @@ const de: Translations = {
   cancelBuild: '✕ Abbrechen',
   pause: '⏸',
 
+  towerArcherName: 'Bogenschütze',
+  towerCannonName: 'Kanone',
+  towerMagicName: 'Magie',
+  towerTargetAll: '⚔️+✈️ Alle',
+  towerTargetGround: '⚔️ Boden',
+  towerTargetAir: '✈️ Luft',
+
   gameOverTitle: 'NIEDERLAGE',
   victoryTitle: 'SIEG!',
   playAgain: 'Nochmal spielen',
@@ -158,6 +180,13 @@ const fr: Translations = {
   buildTower: '🏗 Construire',
   cancelBuild: '✕ Annuler',
   pause: '⏸',
+
+  towerArcherName: 'Archer',
+  towerCannonName: 'Canon',
+  towerMagicName: 'Magie',
+  towerTargetAll: '⚔️+✈️ Tous',
+  towerTargetGround: '⚔️ Sol',
+  towerTargetAir: '✈️ Air',
 
   gameOverTitle: 'DÉFAITE',
   victoryTitle: 'VICTOIRE !',

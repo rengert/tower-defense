@@ -1,18 +1,49 @@
+import type { EnemyCategory, TowerType } from './types';
+
 export const GRID_ROWS = 10;
 export const GRID_COLS = 12;
 export const PATH_ROW = 4;
+/** Row where air enemies fly (clearly above the ground path). */
+export const AIR_ROW = 1;
 
 export const TICK_MS = 100;
-export const ENEMY_SPEED = 0.5; // cells per second
+export const ENEMY_SPEED = 0.5;        // ground enemies: cells per second
+export const ENEMY_AIR_SPEED = 0.7;   // air enemies: cells per second (faster)
 /** Pre-computed speed for a single fixed TICK_MS step (used in unit tests). */
 export const ENEMY_SPEED_PER_TICK = (ENEMY_SPEED * TICK_MS) / 1000;
 
 export const STARTING_GOLD = 150;
 export const STARTING_LIVES = 10;
 
+// ── Per-tower stats ────────────────────────────────────────────────────────
+export interface TowerStats {
+  cost: number;
+  damage: number;
+  /** Attack radius in grid cells. */
+  range: number;
+  cooldownMs: number;
+  /** Which enemy categories this tower can attack. */
+  targets: EnemyCategory[];
+  /** Emoji shown in the build UI and on placed towers. */
+  emoji: string;
+}
+
+export const TOWER_STATS: Record<TowerType, TowerStats> = {
+  /** Archer – versatile, targets both ground and air enemies. */
+  archer: { cost: 50, damage: 15, range: 2.5, cooldownMs: 1000, targets: ['ground', 'air'], emoji: '🏹' },
+  /** Cannon – heavy artillery, ground-only, high damage, slow rate. */
+  cannon: { cost: 75, damage: 35, range: 2.0, cooldownMs: 1500, targets: ['ground'],         emoji: '💣' },
+  /** Magic – arcane tower, air-only, longest range, fast rate. */
+  magic:  { cost: 75, damage: 25, range: 3.0, cooldownMs:  800, targets: ['air'],            emoji: '✨' },
+};
+
+/** Cheapest tower cost – used to check if ANY tower can be afforded. */
 export const TOWER_COST = 50;
+/** @deprecated Use TOWER_STATS[towerType].damage instead. */
 export const TOWER_DAMAGE = 15;
-export const TOWER_RANGE = 2.5; // in cells
+/** @deprecated Use TOWER_STATS[towerType].range instead. */
+export const TOWER_RANGE = 2.5;
+/** @deprecated Use TOWER_STATS[towerType].cooldownMs instead. */
 export const TOWER_COOLDOWN_MS = 1000;
 
 export const ENEMY_BASE_HEALTH = 60;

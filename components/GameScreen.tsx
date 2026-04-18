@@ -1,12 +1,12 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLanguage } from './i18n/LanguageContext';
 import PixiGameRenderer, { type RenderDiagnostics } from './PixiGameRenderer';
 import PauseMenuScreen from './PauseMenuScreen';
-import { TOTAL_WAVES, TOWER_COST } from './game/constants';
+import { TOTAL_WAVES, TOWER_STATS } from './game/constants';
 import { createInitialState, placeTower, tickGame } from './game/logic';
-import type { GameState, GameStatus } from './game/types';
+import type { GameState, GameStatus, TowerType } from './game/types';
 
 interface Props {
   onQuitToMenu: () => void;
@@ -15,7 +15,7 @@ interface Props {
 export default function GameScreen({ onQuitToMenu }: Props) {
   const { t } = useLanguage();
   const [paused, setPaused] = useState(false);
-  const [buildMode, setBuildMode] = useState(false);
+  const [buildTowerType, setBuildTowerType] = useState<TowerType | null>(null);
 
   // ── Shared game state ──────────────────────────────────────────────────────
   // Game state lives in a ref so the PixiJS ticker can read it without causing
@@ -34,9 +34,6 @@ export default function GameScreen({ onQuitToMenu }: Props) {
     lastError: null,
   });
 
-  const pausedRef = useRef(paused);
-  pausedRef.current = paused;
-
   // ── HUD sync helper ────────────────────────────────────────────────────────
   // Only updates the React state values that actually changed to avoid excess renders.
   const syncHudState = useCallback(
@@ -49,31 +46,31 @@ export default function GameScreen({ onQuitToMenu }: Props) {
     []
   );
 
-  // ── Game tick (called by PixiGameRenderer on every animation frame) ────────
+  // ── Game tick ─────────────────────────────────────────────────────────────
   const handleTick = useCallback(
     (dtMs: number) => {
-      if (pausedRef.current) return;
+      if (paused) return;
       const prev = gameRef.current;
       const next = tickGame(prev, dtMs);
       gameRef.current = next;
       syncHudState(prev, next);
     },
-    [syncHudState]
+    [paused, syncHudState]
   );
 
   // ── Tower placement ───────────────────────────────────────────────────────
   const handleCellPress = useCallback(
     (row: number, col: number) => {
-      if (!buildMode || gameRef.current.status !== 'playing') return;
+      if (!buildTowerType || gameRef.current.status !== 'playing') return;
       const prev = gameRef.current;
-      const next = placeTower(prev, row, col);
+      const next = placeTower(prev, row, col, buildTowerType);
       if (next !== prev) {
         gameRef.current = next;
-        setBuildMode(false);
+        setBuildTowerType(null);
         syncHudState(prev, next);
       }
     },
-    [buildMode, syncHudState]
+    [buildTowerType, syncHudState]
   );
 
   // ── Restart ───────────────────────────────────────────────────────────────
@@ -81,7 +78,7 @@ export default function GameScreen({ onQuitToMenu }: Props) {
     const prev = gameRef.current;
     const fresh = createInitialState();
     gameRef.current = fresh;
-    setBuildMode(false);
+    setBuildTowerType(null);
     syncHudState(prev, fresh);
   }, [syncHudState]);
 
@@ -123,7 +120,7 @@ export default function GameScreen({ onQuitToMenu }: Props) {
         onCellPress={handleCellPress}
         gameStateRef={gameRef}
         running={isPlaying && !paused}
-        buildMode={buildMode}
+        buildTowerType={buildTowerType}
         onDiagnosticsChange={setRenderDiagnostics}
       />
 
@@ -142,16 +139,60 @@ export default function GameScreen({ onQuitToMenu }: Props) {
 
       {/* ── Footer – Build Controls ──────────────────────────────────────── */}
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.buildBtn, buildMode && styles.buildBtnActive]}
-          onPress={() => setBuildMode((m) => !m)}
-          accessibilityRole="button"
-          accessibilityLabel={buildMode ? t.cancelBuildA11y : t.buildTowerA11y}
-        >
-          <Text style={styles.buildBtnText}>
-            {buildMode ? t.cancelBuild : `${t.buildTower} · ${TOWER_COST} 💰`}
-          </Text>
-        </TouchableOpacity>
+        {buildTowerType ? (
+          /* Cancel button shown while a tower type is selected */
+          <TouchableOpacity
+            style={styles.cancelBtn}
+            onPress={() => setBuildTowerType(null)}
+            accessibilityRole="button"
+            accessibilityLabel={t.cancelBuildA11y}
+          >
+            <Text style={styles.cancelBtnText}>{t.cancelBuild}</Text>
+          </TouchableOpacity>
+        ) : (
+          /* Three tower-type buttons */
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.towerRow}
+          >
+            {(['archer', 'cannon', 'magic'] as TowerType[]).map((type) => {
+              const stats = TOWER_STATS[type];
+              const canAfford = hudGold >= stats.cost;
+              const targetLabel =
+                stats.targets.length === 2
+                  ? t.towerTargetAll
+                  : stats.targets[0] === 'ground'
+                  ? t.towerTargetGround
+                  : t.towerTargetAir;
+              const name =
+                type === 'archer'
+                  ? t.towerArcherName
+                  : type === 'cannon'
+                  ? t.towerCannonName
+                  : t.towerMagicName;
+              return (
+                <TouchableOpacity
+                  key={type}
+                  style={[styles.towerBtn, !canAfford && styles.towerBtnDisabled]}
+                  onPress={() => canAfford && setBuildTowerType(type)}
+                  disabled={!canAfford}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${name} ${stats.cost} Gold ${targetLabel}`}
+                >
+                  <Text style={styles.towerBtnEmoji}>{stats.emoji}</Text>
+                  <Text style={[styles.towerBtnName, !canAfford && styles.towerBtnTextDisabled]}>
+                    {name}
+                  </Text>
+                  <Text style={[styles.towerBtnCost, !canAfford && styles.towerBtnTextDisabled]}>
+                    {stats.cost} 💰
+                  </Text>
+                  <Text style={styles.towerBtnTarget}>{targetLabel}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
       </View>
 
       {/* ── Pause Menu ───────────────────────────────────────────────────── */}
@@ -289,26 +330,52 @@ const styles = StyleSheet.create({
   pauseButtonText: { fontSize: 16, color: '#d8e8f0' },
 
   footer: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingBottom: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    paddingBottom: 14,
     backgroundColor: '#131825',
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.06)',
   },
-  buildBtn: {
-    backgroundColor: '#0e2a1f',
+  // ── Cancel button (shown when a tower type is selected) ──────────────────
+  cancelBtn: {
+    backgroundColor: '#2a1010',
     paddingVertical: 14,
     borderRadius: 14,
     borderWidth: 1,
+    borderColor: '#ef4444',
+    alignItems: 'center',
+    marginHorizontal: 6,
+  },
+  cancelBtnText: { fontSize: 15, fontWeight: '700', color: '#ef4444', letterSpacing: 0.5 },
+  // ── Tower-type build buttons ──────────────────────────────────────────────
+  towerRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 2,
+  },
+  towerBtn: {
+    flex: 1,
+    minWidth: 90,
+    backgroundColor: '#0e2a1f',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 1,
     borderColor: '#3dba78',
     alignItems: 'center',
+    gap: 2,
   },
-  buildBtnActive: {
-    backgroundColor: '#2a1010',
-    borderColor: '#ef4444',
+  towerBtnDisabled: {
+    backgroundColor: '#111b2d',
+    borderColor: 'rgba(255,255,255,0.1)',
+    opacity: 0.5,
   },
-  buildBtnText: { fontSize: 15, fontWeight: '700', color: '#d8e8f0', letterSpacing: 0.5 },
+  towerBtnEmoji: { fontSize: 22 },
+  towerBtnName: { fontSize: 11, fontWeight: '700', color: '#d8e8f0', letterSpacing: 0.3 },
+  towerBtnCost: { fontSize: 12, fontWeight: '600', color: '#f5c842' },
+  towerBtnTarget: { fontSize: 10, color: '#5a7080', marginTop: 1 },
+  towerBtnTextDisabled: { color: '#3a4858' },
 
   overlay: {
     ...StyleSheet.absoluteFillObject,

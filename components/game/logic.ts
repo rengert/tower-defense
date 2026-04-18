@@ -1,4 +1,6 @@
 import {
+  AIR_ROW,
+  ENEMY_AIR_SPEED,
   ENEMY_BASE_HEALTH,
   ENEMY_GOLD_REWARD,
   ENEMY_HEALTH_SCALE_PER_WAVE,
@@ -12,26 +14,35 @@ import {
   STARTING_LIVES,
   TICK_MS,
   TOTAL_WAVES,
-  TOWER_COOLDOWN_MS,
-  TOWER_COST,
-  TOWER_DAMAGE,
-  TOWER_RANGE,
+  TOWER_STATS,
   WAVE_BREAK_MS,
 } from './constants';
-import type { Enemy, EnemyType, GameState, Tower, TowerType } from './types';
+import type { EnemyCategory, EnemyType, Enemy, GameState, Tower, TowerType } from './types';
 
 /** A cell coordinate on the game grid. */
 export type GridPoint = { row: number; col: number };
 
-/** Maps wave number to the Kenney enemy sprite used in that wave. */
-const WAVE_ENEMY_TYPE: Record<number, EnemyType> = {
-  1: 'goblin',
-  2: 'orc',
-  3: 'skeleton',
-};
+// ── Wave configuration ──────────────────────────────────────────────────────
+type EnemySpec = { enemyType: EnemyType; category: EnemyCategory };
 
-/** Kenney tower sprite types cycled through as towers are placed. */
-const TOWER_TYPES: TowerType[] = ['archer', 'cannon', 'magic'];
+/**
+ * Returns which enemy to spawn for a given wave and spawn index.
+ * Wave 1: all ground (goblin).
+ * Wave 2: alternating ground (orc) / air (harpy).
+ * Wave 3: alternating ground (skeleton) / air (wyvern).
+ */
+function getEnemySpec(wave: number, spawnIndex: number): EnemySpec {
+  switch (wave) {
+    case 1: return { enemyType: 'goblin', category: 'ground' };
+    case 2: return spawnIndex % 2 === 0
+      ? { enemyType: 'orc',   category: 'ground' }
+      : { enemyType: 'harpy', category: 'air' };
+    case 3: return spawnIndex % 2 === 0
+      ? { enemyType: 'skeleton', category: 'ground' }
+      : { enemyType: 'wyvern',   category: 'air' };
+    default: return { enemyType: 'goblin', category: 'ground' };
+  }
+}
 
 /** Off-screen column where enemies spawn (to the left of the grid). */
 const ENEMY_SPAWN_COLUMN = -1;
@@ -39,8 +50,8 @@ const ENEMY_SPAWN_COLUMN = -1;
 /** Sentinel ID used for hypothetical towers during path validation. */
 const HYPOTHETICAL_TOWER_ID = -1;
 
-/** Traversal order for the pathfinding BFS: right first so the default path goes straight along PATH_ROW. */
-const NEIGHBOR_DIRECTIONS: ReadonlyArray<readonly [number, number]> = [
+/** Traversal order: right first so the default path goes straight along PATH_ROW. */
+const NEIGHBOR_DIRECTIONS: readonly (readonly [number, number])[] = [
   [0, 1],   // right
   [0, -1],  // left
   [-1, 0],  // up
@@ -48,9 +59,9 @@ const NEIGHBOR_DIRECTIONS: ReadonlyArray<readonly [number, number]> = [
 ];
 
 /**
- * Finds the shortest path from (PATH_ROW, 0) to (PATH_ROW, GRID_COLS-1),
- * avoiding cells occupied by towers, using breadth-first search.
- * Returns an array of grid cells from start to end, or null if no path exists.
+ * Finds the shortest path for ground enemies from (PATH_ROW, 0) to
+ * (PATH_ROW, GRID_COLS-1), avoiding cells occupied by towers.
+ * Returns an array of grid cells, or null if no path exists.
  */
 export function findShortestPath(towers: Tower[]): GridPoint[] | null {
   const blocked = new Set(towers.map((tower) => `${tower.row},${tower.col}`));
@@ -81,7 +92,6 @@ export function findShortestPath(towers: Tower[]): GridPoint[] | null {
       return path;
     }
 
-    // Prefer moving right to get a natural straight-line default path
     for (const [deltaRow, deltaColumn] of NEIGHBOR_DIRECTIONS) {
       const neighborRow = current.row + deltaRow;
       const neighborColumn = current.col + deltaColumn;
@@ -96,11 +106,6 @@ export function findShortestPath(towers: Tower[]): GridPoint[] | null {
   return null;
 }
 
-/**
- * Build the full traversal path, including the off-screen entry and exit cells.
- * Falls back to a straight line if findShortestPath returns null (should not happen in
- * normal play because canPlaceTower prevents total path blocking).
- */
 function buildFullPath(towers: Tower[]): GridPoint[] {
   const core = findShortestPath(towers);
   const fallback: GridPoint[] = Array.from({ length: GRID_COLS }, (_, column) => ({
@@ -115,7 +120,6 @@ function buildFullPath(towers: Tower[]): GridPoint[] {
   ];
 }
 
-/** Interpolates (row, col) at a given progress along a waypoint path. */
 function positionOnPath(fullPath: GridPoint[], progress: number): GridPoint {
   const maxProgress = fullPath.length - 1;
   if (progress >= maxProgress) return fullPath[maxProgress];
@@ -140,64 +144,60 @@ export function createInitialState(): GameState {
     enemiesSpawned: 0,
     enemiesKilled: 0,
     elapsedMs: 0,
-    // Offset so the first enemy spawns on the very first eligible tick.
     lastSpawnMs: -SPAWN_INTERVAL_MS,
     nextEnemyId: 1,
     nextTowerId: 1,
   };
 }
 
-/**
- * Pure function: advance game state by one time step.
- *
- * @param prev  - Current game state.
- * @param dtMs  - Elapsed time in milliseconds since the last tick.
- *                Defaults to TICK_MS (100 ms) for backwards-compatibility
- *                with unit tests that call tickGame without a dt argument.
- */
 export function tickGame(prev: GameState, dtMs: number = TICK_MS): GameState {
   if (prev.status !== 'playing') return prev;
 
   let enemies: Enemy[] = [...prev.enemies];
   let towers: Tower[] = [...prev.towers];
   let {
-    gold,
-    lives,
-    wave,
-    status,
-    enemiesSpawned,
-    enemiesKilled,
-    elapsedMs,
-    lastSpawnMs,
-    nextEnemyId,
-    nextTowerId,
+    gold, lives, wave, status, enemiesSpawned, enemiesKilled,
+    elapsedMs, lastSpawnMs, nextEnemyId, nextTowerId,
   } = prev;
 
   elapsedMs += dtMs;
 
-  // ── Spawn ────────────────────────────────────────────────────────────────
-  // Flat ENEMIES_PER_WAVE enemies per wave (not scaled by wave index).
-  if (
-    enemiesSpawned < ENEMIES_PER_WAVE &&
-    elapsedMs - lastSpawnMs >= SPAWN_INTERVAL_MS
-  ) {
+  // ── Spawn ─────────────────────────────────────────────────────────────────
+  if (enemiesSpawned < ENEMIES_PER_WAVE && elapsedMs - lastSpawnMs >= SPAWN_INTERVAL_MS) {
     const health = ENEMY_BASE_HEALTH + (wave - 1) * ENEMY_HEALTH_SCALE_PER_WAVE;
-    const enemyType: EnemyType = WAVE_ENEMY_TYPE[wave] ?? 'goblin';
+    const spec = getEnemySpec(wave, enemiesSpawned);
+    const spawnRow = spec.category === 'air' ? AIR_ROW : PATH_ROW;
     enemies = [
       ...enemies,
-      { id: nextEnemyId++, col: ENEMY_SPAWN_COLUMN, row: PATH_ROW, pathProgress: 0, health, maxHealth: health, enemyType },
+      {
+        id: nextEnemyId++,
+        col: ENEMY_SPAWN_COLUMN,
+        row: spawnRow,
+        pathProgress: 0,
+        health,
+        maxHealth: health,
+        enemyType: spec.enemyType,
+        category: spec.category,
+      },
     ];
     enemiesSpawned++;
     lastSpawnMs = elapsedMs;
   }
 
-  // ── Move enemies along the shortest path ──────────────────────────────────
+  // ── Move enemies ──────────────────────────────────────────────────────────
   const fullPath = buildFullPath(towers);
-  const columnsPerMillisecond = ENEMY_SPEED / 1000;
+  const groundColumnsPerMs = ENEMY_SPEED / 1000;
+  const airColumnsPerMs = ENEMY_AIR_SPEED / 1000;
+
   enemies = enemies.map((enemy) => {
-    // Backward-compat: if an enemy has no pathProgress, derive it from col.
+    const category = enemy.category ?? 'ground';
+    if (category === 'air') {
+      // Air enemies fly in a straight horizontal line, ignoring ground towers.
+      return { ...enemy, col: enemy.col + airColumnsPerMs * dtMs, row: AIR_ROW };
+    }
+    // Ground enemies follow the BFS path.
     const previousProgress = enemy.pathProgress ?? (enemy.col - ENEMY_SPAWN_COLUMN);
-    const progress = previousProgress + columnsPerMillisecond * dtMs;
+    const progress = previousProgress + groundColumnsPerMs * dtMs;
     const position = positionOnPath(fullPath, progress);
     return { ...enemy, col: position.col, row: position.row, pathProgress: progress };
   });
@@ -205,10 +205,7 @@ export function tickGame(prev: GameState, dtMs: number = TICK_MS): GameState {
   // ── Enemies reaching the exit ─────────────────────────────────────────────
   let livesLost = 0;
   enemies = enemies.filter((e) => {
-    if (e.col >= GRID_COLS) {
-      livesLost++;
-      return false;
-    }
+    if (e.col >= GRID_COLS) { livesLost++; return false; }
     return true;
   });
   lives = Math.max(0, lives - livesLost);
@@ -219,19 +216,20 @@ export function tickGame(prev: GameState, dtMs: number = TICK_MS): GameState {
 
   towers = towers.map((tower): Tower => {
     const remainingCooldown = tower.cooldownMs - dtMs;
-    if (remainingCooldown > 0) {
-      return { ...tower, cooldownMs: remainingCooldown };
-    }
+    if (remainingCooldown > 0) return { ...tower, cooldownMs: remainingCooldown };
 
-    // Find the closest enemy in range
+    const stats = TOWER_STATS[tower.towerType ?? 'archer'];
+
     let target: Enemy | null = null;
     let minDist = Infinity;
     for (const enemy of mutableEnemies) {
-      const enemyRow = enemy.row ?? PATH_ROW;
+      const enemyCat = enemy.category ?? 'ground';
+      if (!stats.targets.includes(enemyCat)) continue;
+      const enemyRow = enemy.row ?? (enemyCat === 'air' ? AIR_ROW : PATH_ROW);
       const dist = Math.sqrt(
         (enemy.col - tower.col) ** 2 + (enemyRow - tower.row) ** 2
       );
-      if (dist <= TOWER_RANGE && dist < minDist) {
+      if (dist <= stats.range && dist < minDist) {
         minDist = dist;
         target = enemy;
       }
@@ -240,69 +238,53 @@ export function tickGame(prev: GameState, dtMs: number = TICK_MS): GameState {
     if (target !== null) {
       const targetId = target.id;
       mutableEnemies = mutableEnemies.map((e) =>
-        e.id === targetId ? { ...e, health: e.health - TOWER_DAMAGE } : e
+        e.id === targetId ? { ...e, health: e.health - stats.damage } : e
       );
-      return { ...tower, cooldownMs: TOWER_COOLDOWN_MS };
+      return { ...tower, cooldownMs: stats.cooldownMs };
     }
-
     return { ...tower, cooldownMs: 0 };
   });
 
   // ── Remove dead enemies ───────────────────────────────────────────────────
   enemies = mutableEnemies.filter((e) => {
-    if (e.health <= 0) {
-      goldEarned += ENEMY_GOLD_REWARD;
-      enemiesKilled++;
-      return false;
-    }
+    if (e.health <= 0) { goldEarned += ENEMY_GOLD_REWARD; enemiesKilled++; return false; }
     return true;
   });
   gold += goldEarned;
 
   // ── Wave transition ───────────────────────────────────────────────────────
   const waveComplete = enemiesSpawned >= ENEMIES_PER_WAVE && enemies.length === 0;
-
   if (waveComplete) {
     if (wave >= TOTAL_WAVES) {
       status = 'won';
     } else {
       wave++;
       enemiesSpawned = 0;
-      // Delay the first spawn of the new wave by WAVE_BREAK_MS
       lastSpawnMs = elapsedMs + WAVE_BREAK_MS - SPAWN_INTERVAL_MS;
     }
   }
 
-  // ── Lose condition ────────────────────────────────────────────────────────
-  if (lives <= 0) {
-    status = 'lost';
-  }
+  if (lives <= 0) status = 'lost';
 
   return {
-    enemies,
-    towers,
-    gold,
-    lives,
-    wave,
-    status,
-    enemiesSpawned,
-    enemiesKilled,
-    elapsedMs,
-    lastSpawnMs,
-    nextEnemyId,
-    nextTowerId,
+    enemies, towers, gold, lives, wave, status,
+    enemiesSpawned, enemiesKilled, elapsedMs, lastSpawnMs, nextEnemyId, nextTowerId,
   };
 }
 
-/** Returns true when a tower can legally be placed at (row, col). */
+/**
+ * Returns true when a tower of the given type can legally be placed at (row, col).
+ * Defaults to 'archer' for backward compatibility.
+ */
 export function canPlaceTower(
   state: GameState,
   row: number,
-  col: number
+  col: number,
+  towerType: TowerType = 'archer'
 ): boolean {
-  if (state.gold < TOWER_COST) return false;
+  const { cost } = TOWER_STATS[towerType];
+  if (state.gold < cost) return false;
   if (state.towers.some((tower) => tower.row === row && tower.col === col)) return false;
-  // Only allow placement when a valid path still exists after the tower is added.
   const hypothetical: Tower[] = [
     ...state.towers,
     { id: HYPOTHETICAL_TOWER_ID, row, col, cooldownMs: 0 },
@@ -310,22 +292,25 @@ export function canPlaceTower(
   return findShortestPath(hypothetical) !== null;
 }
 
-/** Returns a new state with the tower placed (or the same state if invalid). */
+/**
+ * Returns a new state with the tower placed, or the same state if invalid.
+ * Defaults to 'archer' for backward compatibility.
+ */
 export function placeTower(
   state: GameState,
   row: number,
-  col: number
+  col: number,
+  towerType: TowerType = 'archer'
 ): GameState {
-  if (!canPlaceTower(state, row, col)) return state;
-  // nextTowerId starts at 1; subtract 1 so the first tower gets index 0 ('archer').
-  const towerType = TOWER_TYPES[(state.nextTowerId - 1) % TOWER_TYPES.length];
+  if (!canPlaceTower(state, row, col, towerType)) return state;
+  const { cost } = TOWER_STATS[towerType];
   return {
     ...state,
     towers: [
       ...state.towers,
       { id: state.nextTowerId, row, col, cooldownMs: 0, towerType },
     ],
-    gold: state.gold - TOWER_COST,
+    gold: state.gold - cost,
     nextTowerId: state.nextTowerId + 1,
   };
 }

@@ -5,22 +5,26 @@
  * Keeps the same public API so GameScreen does not need to change.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Image, LayoutChangeEvent, StyleSheet, View } from 'react-native';
+import { Image, LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import {
+  AIR_ROW,
   GRID_COLS,
   GRID_ROWS,
   PATH_ROW,
-  TOWER_COST,
+  TOWER_STATS,
 } from './game/constants';
 import { findShortestPath } from './game/logic';
-import type { GameState } from './game/types';
+import type { GameState, TowerType } from './game/types';
 
-// ── Kenney enemy sprites (CC-0 pixel art, 32×32 RGBA PNG) ──────────────────
+// ── Kenney enemy sprites – air variants reuse ground sprites with visual tint ─
 const DEFAULT_ENEMY_TYPE = 'goblin' as const;
 const ENEMY_SPRITES = {
   goblin:   require('../assets/enemies/goblin.png'),
   orc:      require('../assets/enemies/orc.png'),
   skeleton: require('../assets/enemies/skeleton.png'),
+  harpy:    require('../assets/enemies/goblin.png'),   // reuse goblin sprite
+  wyvern:   require('../assets/enemies/orc.png'),      // reuse orc sprite
+  specter:  require('../assets/enemies/skeleton.png'), // reuse skeleton sprite
 } as const;
 
 // ── Kenney tower sprites (CC-0 pixel art, 32×32 RGBA PNG) ──────────────────
@@ -40,8 +44,11 @@ interface Props {
   gameStateRef: React.MutableRefObject<GameState>;
   /** Whether the game loop should be running. */
   running: boolean;
-  /** Whether build-mode cell highlights should be shown. */
-  buildMode: boolean;
+  /**
+   * The tower type the player has selected to build, or null when not in build mode.
+   * Controls cell highlight colour and the tower that gets placed on tap.
+   */
+  buildTowerType: TowerType | null;
   /** Emits renderer diagnostics so native black-screen issues are visible in UI/logs. */
   onDiagnosticsChange: (diag: RenderDiagnostics) => void;
 }
@@ -68,12 +75,15 @@ const C = {
   gridLine: '#182030',
   cell: '#111b2d',
   pathRow: '#2a2010',
+  airRow: '#0d1a2a',    // subtle blue tint for the air lane
   towerCell: '#0a2018',
   buildHighlight: '#0d3020',
   hpFull: '#4ade80',
   hpLow: '#fb923c',
   hpEmpty: '#ef4444',
   hpBg: '#111827',
+  airHpFull: '#38bdf8',  // sky-blue HP for air enemies
+  airHpLow: '#7dd3fc',
 };
 
 export default function PixiGameRenderer({
@@ -81,7 +91,7 @@ export default function PixiGameRenderer({
   onCellPress,
   gameStateRef,
   running,
-  buildMode,
+  buildTowerType,
   onDiagnosticsChange,
 }: Props) {
   const dimsRef = useRef({ width: 0, height: 0, cellW: 0, cellH: 0, offsetX: 0, offsetY: 0 });
@@ -89,8 +99,8 @@ export default function PixiGameRenderer({
   const [frameVersion, setFrameVersion] = useState(0);
   const runningRef = useRef(running);
   runningRef.current = running;
-  const buildModeRef = useRef(buildMode);
-  buildModeRef.current = buildMode;
+  const buildTowerTypeRef = useRef(buildTowerType);
+  buildTowerTypeRef.current = buildTowerType;
   // Keep onTick stable in the ticker closure via a ref so stale captures are avoided.
   const onTickRef = useRef(onTick);
   onTickRef.current = onTick;
@@ -183,7 +193,8 @@ export default function PixiGameRenderer({
     const pathSet = currentPath
       ? new Set(currentPath.map((point) => `${point.row},${point.col}`))
       : new Set<string>();
-    const inBuildMode = buildMode && state.gold >= TOWER_COST;
+    const inBuildMode = buildTowerType !== null &&
+      state.gold >= TOWER_STATS[buildTowerType].cost;
     for (let r = 0; r < GRID_ROWS; r++) {
       for (let c = 0; c < GRID_COLS; c++) {
         const key = `${r}-${c}`;
@@ -191,10 +202,9 @@ export default function PixiGameRenderer({
         if (towerSet.has(`${r},${c}`)) {
           color = C.towerCell;
         } else if (inBuildMode) {
-          // In build mode every non-occupied cell gets a highlight so the player
-          // can see ALL tappable cells – including path-row cells that have an
-          // alternate detour available.
           color = C.buildHighlight;
+        } else if (r === AIR_ROW) {
+          color = C.airRow;
         } else if (pathSet.has(`${r},${c}`)) {
           color = C.pathRow;
         }
@@ -202,11 +212,8 @@ export default function PixiGameRenderer({
       }
     }
     return list;
-    // frameVersion is intentionally included so the memo re-reads the mutable
-    // gameStateRef on every animation frame. The exhaustive-deps warning is
-    // expected and safe to suppress here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildMode, dims.cellH, dims.cellW, dims.offsetX, dims.offsetY, frameVersion, state.gold, state.towers]);
+  }, [buildTowerType, dims.cellH, dims.cellW, dims.offsetX, dims.offsetY, frameVersion, state.gold, state.towers]);
 
   // Keep a ref so the responder callbacks always use the latest onCellPress
   // without needing to re-register the responder on every render.
@@ -224,7 +231,7 @@ export default function PixiGameRenderer({
           locationY,
           cellW,
           cellH,
-          buildMode: buildModeRef.current,
+          buildTowerType: buildTowerTypeRef.current,
         });
       }
       if (cellW === 0 || cellH === 0) return;
@@ -264,26 +271,44 @@ export default function PixiGameRenderer({
           const y = dims.offsetY + tower.row * dims.cellH + padding;
           const w = dims.cellW - padding * 2;
           const h = dims.cellH - padding * 2;
-          const sprite = TOWER_SPRITES[tower.towerType ?? DEFAULT_TOWER_TYPE];
+          const towerType = tower.towerType ?? DEFAULT_TOWER_TYPE;
+          const sprite = TOWER_SPRITES[towerType];
+          const towerEmoji = TOWER_STATS[towerType].emoji;
           return (
-            <Image
-              key={`tower-${tower.id}`}
-              source={sprite}
-              style={[
-                styles.tower,
-                {
-                  left: x,
-                  top: y,
-                  width: w,
-                  height: h,
-                },
-              ]}
-              resizeMode="contain"
-            />
+            <React.Fragment key={`tower-${tower.id}`}>
+              <Image
+                source={sprite}
+                style={[
+                  styles.tower,
+                  {
+                    left: x,
+                    top: y,
+                    width: w,
+                    height: h,
+                  },
+                ]}
+                resizeMode="contain"
+              />
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.towerBadge,
+                  {
+                    left: x + w - dims.cellW * 0.26,
+                    top: y - dims.cellH * 0.03,
+                    width: dims.cellW * 0.24,
+                    height: dims.cellW * 0.24,
+                  },
+                ]}
+              >
+                <Text style={styles.towerBadgeText}>{towerEmoji}</Text>
+              </View>
+            </React.Fragment>
           );
         })}
 
         {state.enemies.map((enemy) => {
+          const isAirEnemy = (enemy.category ?? 'ground') === 'air';
           const pathY = dims.offsetY + (enemy.row ?? PATH_ROW) * dims.cellH;
           const padding = dims.cellH * 0.1;
           const enemyH = dims.cellH * 0.6;
@@ -292,7 +317,17 @@ export default function PixiGameRenderer({
           const x = dims.offsetX + enemy.col * dims.cellW + padding;
           const w = dims.cellW - padding * 2;
           const hpRatio = Math.max(0, enemy.health / enemy.maxHealth);
-          const hpColor = hpRatio > 0.5 ? C.hpFull : hpRatio > 0.25 ? C.hpLow : C.hpEmpty;
+          const hpColor = isAirEnemy
+            ? hpRatio > 0.5
+              ? C.airHpFull
+              : hpRatio > 0.25
+                ? C.airHpLow
+                : C.hpEmpty
+            : hpRatio > 0.5
+              ? C.hpFull
+              : hpRatio > 0.25
+                ? C.hpLow
+                : C.hpEmpty;
           const sprite = ENEMY_SPRITES[enemy.enemyType ?? DEFAULT_ENEMY_TYPE];
 
           return (
@@ -301,6 +336,7 @@ export default function PixiGameRenderer({
                 source={sprite}
                 style={[
                   styles.enemy,
+                  isAirEnemy && styles.enemyAir,
                   {
                     left: x,
                     top: pathY + padding,
@@ -310,6 +346,20 @@ export default function PixiGameRenderer({
                 ]}
                 resizeMode="contain"
               />
+              {isAirEnemy && (
+                <View
+                  pointerEvents="none"
+                  style={[
+                    styles.enemyBadge,
+                    {
+                      left: x - dims.cellW * 0.03,
+                      top: pathY + padding - dims.cellH * 0.08,
+                    },
+                  ]}
+                >
+                  <Text style={styles.enemyBadgeText}>✈</Text>
+                </View>
+              )}
               <View
                 pointerEvents="none"
                 style={[
@@ -358,8 +408,39 @@ const styles = StyleSheet.create({
   tower: {
     position: 'absolute',
   },
+  towerBadge: {
+    position: 'absolute',
+    borderRadius: 999,
+    backgroundColor: 'rgba(10,16,23,0.92)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,200,66,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  towerBadgeText: {
+    fontSize: 10,
+  },
   enemy: {
     position: 'absolute',
+  },
+  enemyAir: {
+    opacity: 0.92,
+    tintColor: '#c7f0ff',
+  },
+  enemyBadge: {
+    position: 'absolute',
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 3,
+    borderRadius: 999,
+    backgroundColor: 'rgba(14, 165, 233, 0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  enemyBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#06131d',
   },
   hpBar: {
     position: 'absolute',

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
 import App from '../App';
-import { STARTING_GOLD, STARTING_LIVES, TOWER_COST } from '../components/game/constants';
+import { STARTING_GOLD, STARTING_LIVES, TOWER_STATS } from '../components/game/constants';
 
 // PixiGameRenderer uses expo-gl / pixi.js (WebGL) which is unavailable in Jest.
 // The manual mock at components/__mocks__/PixiGameRenderer.tsx replaces it with
@@ -124,28 +124,31 @@ describe('GameScreen tower building', () => {
     jest.useRealTimers();
   });
 
-  it('shows the Build Tower button', () => {
-    expect(screen.getByLabelText('Build tower')).toBeTruthy();
+  it('shows the three tower build buttons', () => {
+    expect(screen.getByText('Archer')).toBeTruthy();
+    expect(screen.getByText('Cannon')).toBeTruthy();
+    expect(screen.getByText('Magic')).toBeTruthy();
   });
 
-  it('entering build mode shows the Cancel button', () => {
-    fireEvent.press(screen.getByLabelText('Build tower'));
+  it('selecting a tower shows the Cancel button', () => {
+    fireEvent.press(screen.getByText('Archer'));
     expect(screen.getByLabelText('Cancel build')).toBeTruthy();
   });
 
-  it('cancelling build mode restores the Build Tower button', () => {
-    fireEvent.press(screen.getByLabelText('Build tower'));
+  it('cancelling build mode restores the tower picker', () => {
+    fireEvent.press(screen.getByText('Archer'));
     fireEvent.press(screen.getByLabelText('Cancel build'));
-    expect(screen.getByLabelText('Build tower')).toBeTruthy();
+    expect(screen.getByText('Archer')).toBeTruthy();
+    expect(screen.getByText('Cannon')).toBeTruthy();
   });
 
-  it('pressing a non-path cell in build mode places a tower and deducts gold', () => {
-    fireEvent.press(screen.getByLabelText('Build tower'));
+  it('placing an archer tower deducts archer cost and exits build mode', () => {
+    fireEvent.press(screen.getByText('Archer'));
     // Row 0, col 0 is a valid build cell (not PATH_ROW)
     fireEvent.press(screen.getByLabelText('Cell row 0 col 0'));
-    expect(screen.getByText(String(STARTING_GOLD - TOWER_COST))).toBeTruthy();
+    expect(screen.getByText(String(STARTING_GOLD - TOWER_STATS.archer.cost))).toBeTruthy();
     // Build mode is cancelled automatically after placement
-    expect(screen.getByLabelText('Build tower')).toBeTruthy();
+    expect(screen.getByText('Archer')).toBeTruthy();
   });
 });
 

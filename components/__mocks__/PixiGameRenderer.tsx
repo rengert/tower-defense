@@ -21,7 +21,7 @@ interface Props {
   onCellPress: (row: number, col: number) => void;
   gameStateRef: React.MutableRefObject<unknown>;
   running: boolean;
-  buildMode: boolean;
+  buildTowerType: 'archer' | 'cannon' | 'magic' | null;
   onDiagnosticsChange: (diag: RenderDiagnostics) => void;
 }
 
