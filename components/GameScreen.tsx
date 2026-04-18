@@ -1,18 +1,33 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLanguage } from './i18n/LanguageContext';
 import PixiGameRenderer, { type RenderDiagnostics } from './PixiGameRenderer';
 import PauseMenuScreen from './PauseMenuScreen';
-import { TOTAL_WAVES, TOWER_STATS } from './game/constants';
-import { createInitialState, placeTower, tickGame } from './game/logic';
+import { type TowerStats } from './game/constants';
+import { createInitialState, getLevelDifficulty, placeTower, tickGame } from './game/logic';
 import type { GameState, GameStatus, TowerType } from './game/types';
 
 interface Props {
   onQuitToMenu: () => void;
+  startLevel: number;
+  unlockedTowers: TowerType[];
+  effectiveTowerStats: Record<TowerType, TowerStats>;
+  onRunFinished: (result: {
+    won: boolean;
+    level: number;
+    enemiesKilled: number;
+    wavesSurvived: number;
+  }) => void;
 }
 
-export default function GameScreen({ onQuitToMenu }: Props) {
+export default function GameScreen({
+  onQuitToMenu,
+  startLevel,
+  unlockedTowers,
+  effectiveTowerStats,
+  onRunFinished,
+}: Props) {
   const { t } = useLanguage();
   const [paused, setPaused] = useState(false);
   const [buildTowerType, setBuildTowerType] = useState<TowerType | null>(null);
@@ -21,7 +36,7 @@ export default function GameScreen({ onQuitToMenu }: Props) {
   // Game state lives in a ref so the PixiJS ticker can read it without causing
   // React re-renders on every frame. HUD-visible values are mirrored into React
   // state and updated whenever they change.
-  const gameRef = useRef<GameState>(createInitialState());
+  const gameRef = useRef<GameState>(createInitialState(startLevel));
   const [hudGold, setHudGold] = useState(gameRef.current.gold);
   const [hudLives, setHudLives] = useState(gameRef.current.lives);
   const [hudWave, setHudWave] = useState(gameRef.current.wave);
@@ -33,6 +48,9 @@ export default function GameScreen({ onQuitToMenu }: Props) {
     lastFrameMs: null,
     lastError: null,
   });
+  const reportedEndRef = useRef(false);
+  const levelDifficulty = getLevelDifficulty(startLevel);
+  const towerChoices = unlockedTowers;
 
   // ── HUD sync helper ────────────────────────────────────────────────────────
   // Only updates the React state values that actually changed to avoid excess renders.
@@ -51,11 +69,11 @@ export default function GameScreen({ onQuitToMenu }: Props) {
     (dtMs: number) => {
       if (paused) return;
       const prev = gameRef.current;
-      const next = tickGame(prev, dtMs);
+      const next = tickGame(prev, dtMs, effectiveTowerStats);
       gameRef.current = next;
       syncHudState(prev, next);
     },
-    [paused, syncHudState]
+    [effectiveTowerStats, paused, syncHudState]
   );
 
   // ── Tower placement ───────────────────────────────────────────────────────
@@ -63,24 +81,36 @@ export default function GameScreen({ onQuitToMenu }: Props) {
     (row: number, col: number) => {
       if (!buildTowerType || gameRef.current.status !== 'playing') return;
       const prev = gameRef.current;
-      const next = placeTower(prev, row, col, buildTowerType);
+      const next = placeTower(prev, row, col, buildTowerType, effectiveTowerStats);
       if (next !== prev) {
         gameRef.current = next;
         setBuildTowerType(null);
         syncHudState(prev, next);
       }
     },
-    [buildTowerType, syncHudState]
+    [buildTowerType, effectiveTowerStats, syncHudState]
   );
 
   // ── Restart ───────────────────────────────────────────────────────────────
   const handleRestart = useCallback(() => {
     const prev = gameRef.current;
-    const fresh = createInitialState();
+    const fresh = createInitialState(startLevel);
     gameRef.current = fresh;
+    reportedEndRef.current = false;
     setBuildTowerType(null);
     syncHudState(prev, fresh);
-  }, [syncHudState]);
+  }, [startLevel, syncHudState]);
+
+  useEffect(() => {
+    if ((gameStatus !== 'won' && gameStatus !== 'lost') || reportedEndRef.current) return;
+    reportedEndRef.current = true;
+    onRunFinished({
+      won: gameStatus === 'won',
+      level: startLevel,
+      enemiesKilled: gameRef.current.enemiesKilled,
+      wavesSurvived: hudWave,
+    });
+  }, [gameStatus, hudWave, onRunFinished, startLevel]);
 
   const isPlaying = gameStatus === 'playing';
 
@@ -91,7 +121,7 @@ export default function GameScreen({ onQuitToMenu }: Props) {
         <View style={styles.header}>
           <View style={styles.waveBadge}>
             <Text style={styles.waveLabel}>{t.wave}</Text>
-            <Text style={styles.waveValue}>{hudWave}/{TOTAL_WAVES}</Text>
+            <Text style={styles.waveValue}>{hudWave}/{levelDifficulty.totalWaves}</Text>
           </View>
           <View style={styles.statsRow}>
             <View style={styles.statPill}>
@@ -156,8 +186,8 @@ export default function GameScreen({ onQuitToMenu }: Props) {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.towerRow}
           >
-            {(['archer', 'cannon', 'magic'] as TowerType[]).map((type) => {
-              const stats = TOWER_STATS[type];
+            {towerChoices.map((type) => {
+              const stats = effectiveTowerStats[type];
               const canAfford = hudGold >= stats.cost;
               const targetLabel =
                 stats.targets.length === 2
@@ -250,7 +280,7 @@ export default function GameScreen({ onQuitToMenu }: Props) {
             </Text>
             <Text style={styles.panelStat}>
               Waves survived:{' '}
-              <Text style={styles.panelStatValue}>{hudWave}/{TOTAL_WAVES}</Text>
+              <Text style={styles.panelStatValue}>{hudWave}/{levelDifficulty.totalWaves}</Text>
             </Text>
             <TouchableOpacity
               style={styles.panelBtn}

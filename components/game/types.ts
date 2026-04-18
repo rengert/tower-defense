@@ -47,6 +47,8 @@ export interface GameState {
   towers: Tower[];
   gold: number;
   lives: number;
+  /** Current run level (meta progression difficulty tier). */
+  level: number;
   wave: number;
   status: GameStatus;
   enemiesSpawned: number;

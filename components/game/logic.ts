@@ -15,12 +15,45 @@ import {
   TICK_MS,
   TOTAL_WAVES,
   TOWER_STATS,
+  type TowerStats,
   WAVE_BREAK_MS,
 } from './constants';
 import type { EnemyCategory, EnemyType, Enemy, GameState, Tower, TowerType } from './types';
 
 /** A cell coordinate on the game grid. */
 export type GridPoint = { row: number; col: number };
+
+export interface LevelDifficulty {
+  level: number;
+  enemyHealthMultiplier: number;
+  groundSpeedMultiplier: number;
+  airSpeedMultiplier: number;
+  spawnIntervalMs: number;
+  enemiesPerWave: number;
+  totalWaves: number;
+  waveBreakMs: number;
+}
+
+/** Returns dynamic difficulty parameters for a level. */
+export function getLevelDifficulty(level: number): LevelDifficulty {
+  const safeLevel = Math.max(1, Math.floor(level));
+  return {
+    level: safeLevel,
+    enemyHealthMultiplier: 1 + (safeLevel - 1) * 0.18,
+    groundSpeedMultiplier: 1 + (safeLevel - 1) * 0.045,
+    airSpeedMultiplier: 1 + (safeLevel - 1) * 0.055,
+    spawnIntervalMs: Math.max(900, SPAWN_INTERVAL_MS - (safeLevel - 1) * 60),
+    enemiesPerWave: ENEMIES_PER_WAVE + Math.floor((safeLevel - 1) / 2),
+    totalWaves: TOTAL_WAVES + Math.floor((safeLevel - 1) / 3),
+    waveBreakMs: Math.max(1200, WAVE_BREAK_MS - (safeLevel - 1) * 120),
+  };
+}
+
+function resolveTowerStats(
+  towerStatsOverride?: Record<TowerType, TowerStats>
+): Record<TowerType, TowerStats> {
+  return towerStatsOverride ?? TOWER_STATS;
+}
 
 // ── Wave configuration ──────────────────────────────────────────────────────
 type EnemySpec = { enemyType: EnemyType; category: EnemyCategory };
@@ -133,7 +166,7 @@ function positionOnPath(fullPath: GridPoint[], progress: number): GridPoint {
   };
 }
 
-export function createInitialState(): GameState {
+export function createInitialState(level: number = 1): GameState {
   return {
     enemies: [],
     towers: [],
@@ -147,11 +180,19 @@ export function createInitialState(): GameState {
     lastSpawnMs: -SPAWN_INTERVAL_MS,
     nextEnemyId: 1,
     nextTowerId: 1,
+    level: Math.max(1, Math.floor(level)),
   };
 }
 
-export function tickGame(prev: GameState, dtMs: number = TICK_MS): GameState {
+export function tickGame(
+  prev: GameState,
+  dtMs: number = TICK_MS,
+  towerStatsOverride?: Record<TowerType, TowerStats>
+): GameState {
   if (prev.status !== 'playing') return prev;
+
+  const levelDifficulty = getLevelDifficulty(prev.level);
+  const towerStats = resolveTowerStats(towerStatsOverride);
 
   let enemies: Enemy[] = [...prev.enemies];
   let towers: Tower[] = [...prev.towers];
@@ -163,8 +204,11 @@ export function tickGame(prev: GameState, dtMs: number = TICK_MS): GameState {
   elapsedMs += dtMs;
 
   // ── Spawn ─────────────────────────────────────────────────────────────────
-  if (enemiesSpawned < ENEMIES_PER_WAVE && elapsedMs - lastSpawnMs >= SPAWN_INTERVAL_MS) {
-    const health = ENEMY_BASE_HEALTH + (wave - 1) * ENEMY_HEALTH_SCALE_PER_WAVE;
+  if (enemiesSpawned < levelDifficulty.enemiesPerWave && elapsedMs - lastSpawnMs >= levelDifficulty.spawnIntervalMs) {
+    const health = Math.round(
+      (ENEMY_BASE_HEALTH + (wave - 1) * ENEMY_HEALTH_SCALE_PER_WAVE) *
+      levelDifficulty.enemyHealthMultiplier
+    );
     const spec = getEnemySpec(wave, enemiesSpawned);
     const spawnRow = spec.category === 'air' ? AIR_ROW : PATH_ROW;
     enemies = [
@@ -186,8 +230,8 @@ export function tickGame(prev: GameState, dtMs: number = TICK_MS): GameState {
 
   // ── Move enemies ──────────────────────────────────────────────────────────
   const fullPath = buildFullPath(towers);
-  const groundColumnsPerMs = ENEMY_SPEED / 1000;
-  const airColumnsPerMs = ENEMY_AIR_SPEED / 1000;
+  const groundColumnsPerMs = (ENEMY_SPEED * levelDifficulty.groundSpeedMultiplier) / 1000;
+  const airColumnsPerMs = (ENEMY_AIR_SPEED * levelDifficulty.airSpeedMultiplier) / 1000;
 
   enemies = enemies.map((enemy) => {
     const category = enemy.category ?? 'ground';
@@ -218,7 +262,7 @@ export function tickGame(prev: GameState, dtMs: number = TICK_MS): GameState {
     const remainingCooldown = tower.cooldownMs - dtMs;
     if (remainingCooldown > 0) return { ...tower, cooldownMs: remainingCooldown };
 
-    const stats = TOWER_STATS[tower.towerType ?? 'archer'];
+    const stats = towerStats[tower.towerType ?? 'archer'];
 
     let target: Enemy | null = null;
     let minDist = Infinity;
@@ -253,14 +297,14 @@ export function tickGame(prev: GameState, dtMs: number = TICK_MS): GameState {
   gold += goldEarned;
 
   // ── Wave transition ───────────────────────────────────────────────────────
-  const waveComplete = enemiesSpawned >= ENEMIES_PER_WAVE && enemies.length === 0;
+  const waveComplete = enemiesSpawned >= levelDifficulty.enemiesPerWave && enemies.length === 0;
   if (waveComplete) {
-    if (wave >= TOTAL_WAVES) {
+    if (wave >= levelDifficulty.totalWaves) {
       status = 'won';
     } else {
       wave++;
       enemiesSpawned = 0;
-      lastSpawnMs = elapsedMs + WAVE_BREAK_MS - SPAWN_INTERVAL_MS;
+      lastSpawnMs = elapsedMs + levelDifficulty.waveBreakMs - levelDifficulty.spawnIntervalMs;
     }
   }
 
@@ -269,6 +313,7 @@ export function tickGame(prev: GameState, dtMs: number = TICK_MS): GameState {
   return {
     enemies, towers, gold, lives, wave, status,
     enemiesSpawned, enemiesKilled, elapsedMs, lastSpawnMs, nextEnemyId, nextTowerId,
+    level: prev.level,
   };
 }
 
@@ -280,9 +325,11 @@ export function canPlaceTower(
   state: GameState,
   row: number,
   col: number,
-  towerType: TowerType = 'archer'
+  towerType: TowerType = 'archer',
+  towerStatsOverride?: Record<TowerType, TowerStats>
 ): boolean {
-  const { cost } = TOWER_STATS[towerType];
+  const towerStats = resolveTowerStats(towerStatsOverride);
+  const { cost } = towerStats[towerType];
   if (state.gold < cost) return false;
   if (state.towers.some((tower) => tower.row === row && tower.col === col)) return false;
   const hypothetical: Tower[] = [
@@ -300,10 +347,12 @@ export function placeTower(
   state: GameState,
   row: number,
   col: number,
-  towerType: TowerType = 'archer'
+  towerType: TowerType = 'archer',
+  towerStatsOverride?: Record<TowerType, TowerStats>
 ): GameState {
-  if (!canPlaceTower(state, row, col, towerType)) return state;
-  const { cost } = TOWER_STATS[towerType];
+  const towerStats = resolveTowerStats(towerStatsOverride);
+  if (!canPlaceTower(state, row, col, towerType, towerStats)) return state;
+  const { cost } = towerStats[towerType];
   return {
     ...state,
     towers: [

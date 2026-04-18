@@ -124,10 +124,10 @@ describe('GameScreen tower building', () => {
     jest.useRealTimers();
   });
 
-  it('shows the three tower build buttons', () => {
+  it('shows only unlocked tower build buttons at run start', () => {
     expect(screen.getByText('Archer')).toBeTruthy();
-    expect(screen.getByText('Cannon')).toBeTruthy();
-    expect(screen.getByText('Magic')).toBeTruthy();
+    expect(screen.queryByText('Cannon')).toBeNull();
+    expect(screen.queryByText('Magic')).toBeNull();
   });
 
   it('selecting a tower shows the Cancel button', () => {
@@ -139,7 +139,7 @@ describe('GameScreen tower building', () => {
     fireEvent.press(screen.getByText('Archer'));
     fireEvent.press(screen.getByLabelText('Cancel build'));
     expect(screen.getByText('Archer')).toBeTruthy();
-    expect(screen.getByText('Cannon')).toBeTruthy();
+    expect(screen.queryByText('Cannon')).toBeNull();
   });
 
   it('placing an archer tower deducts archer cost and exits build mode', () => {
@@ -149,6 +149,22 @@ describe('GameScreen tower building', () => {
     expect(screen.getByText(String(STARTING_GOLD - TOWER_STATS.archer.cost))).toBeTruthy();
     // Build mode is cancelled automatically after placement
     expect(screen.getByText('Archer')).toBeTruthy();
+  });
+});
+
+describe('Start menu progression panel', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    render(<App />);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('shows meta coins and level selector', () => {
+    expect(screen.getByText('0 💰')).toBeTruthy();
+    expect(screen.getByText('Level')).toBeTruthy();
   });
 });
 

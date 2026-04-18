@@ -4,6 +4,7 @@ import {
   createInitialState,
   placeTower,
   tickGame,
+  getLevelDifficulty,
 } from '../components/game/logic';
 import {
   AIR_ROW,
@@ -32,6 +33,21 @@ describe('createInitialState', () => {
     expect(state.towers).toHaveLength(0);
     expect(state.enemiesSpawned).toBe(0);
     expect(state.enemiesKilled).toBe(0);
+  });
+
+  it('supports creating a state for a specific level', () => {
+    const state = createInitialState(4);
+    expect(state.level).toBe(4);
+  });
+});
+
+describe('getLevelDifficulty', () => {
+  it('scales enemy and wave parameters upward for higher levels', () => {
+    const level1 = getLevelDifficulty(1);
+    const level8 = getLevelDifficulty(8);
+    expect(level8.enemyHealthMultiplier).toBeGreaterThan(level1.enemyHealthMultiplier);
+    expect(level8.enemiesPerWave).toBeGreaterThanOrEqual(level1.enemiesPerWave);
+    expect(level8.spawnIntervalMs).toBeLessThan(level1.spawnIntervalMs);
   });
 });
 
@@ -238,6 +254,12 @@ describe('tickGame', () => {
 
     expect(state.enemies[1].category).toBe('air');
     expect(state.enemies[1].row).toBe(AIR_ROW);
+  });
+
+  it('applies higher-level health scaling to spawned enemies', () => {
+    const levelOne = tickGame(createInitialState(1));
+    const levelFive = tickGame(createInitialState(5));
+    expect(levelFive.enemies[0].health).toBeGreaterThan(levelOne.enemies[0].health);
   });
 
   it('sets status to lost when lives reach zero', () => {
