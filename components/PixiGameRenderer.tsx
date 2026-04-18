@@ -5,7 +5,7 @@
  * Keeps the same public API so GameScreen does not need to change.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Image, LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import { Image, LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import {
   GRID_COLS,
   GRID_ROWS,
@@ -181,43 +181,57 @@ export default function PixiGameRenderer({
     const pathSet = currentPath
       ? new Set(currentPath.map((point) => `${point.row},${point.col}`))
       : new Set<string>();
+    const inBuildMode = buildMode && state.gold >= TOWER_COST;
     for (let r = 0; r < GRID_ROWS; r++) {
       for (let c = 0; c < GRID_COLS; c++) {
         const key = `${r}-${c}`;
         let color = C.cell;
         if (towerSet.has(`${r},${c}`)) {
           color = C.towerCell;
+        } else if (inBuildMode) {
+          // In build mode every non-occupied cell gets a highlight so the player
+          // can see ALL tappable cells – including path-row cells that have an
+          // alternate detour available.
+          color = C.buildHighlight;
         } else if (pathSet.has(`${r},${c}`)) {
           color = C.pathRow;
-        } else if (
-          buildModeRef.current &&
-          state.gold >= TOWER_COST &&
-          !towerSet.has(`${r},${c}`)
-        ) {
-          color = C.buildHighlight;
         }
         list.push({ key, x: c * dims.cellW, y: r * dims.cellH, color });
       }
     }
     return list;
     // frameVersion keeps this derived data in sync with ref-based game updates.
-  }, [dims.cellH, dims.cellW, frameVersion, state.gold, state.towers]);
+    // buildMode is now a direct dep so highlights appear immediately on toggle.
+  }, [buildMode, dims.cellH, dims.cellW, frameVersion, state.gold, state.towers]);
+
+  // Keep a ref so the responder callbacks always use the latest onCellPress
+  // without needing to re-register the responder on every render.
+  const onCellPressRef = useRef(onCellPress);
+  onCellPressRef.current = onCellPress;
 
   // ── Touch → cell coord conversion ────────────────────────────────────────
-  const handleTouch = useCallback(
-    (event: {
-      nativeEvent: { locationX: number; locationY: number };
-    }) => {
+  const handleTouchStart = useCallback(
+    (event: { nativeEvent: { locationX: number; locationY: number } }) => {
       const { locationX, locationY } = event.nativeEvent;
       const { cellW, cellH } = dimsRef.current;
+      if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.info('[PixiGameRenderer] touch', {
+          locationX,
+          locationY,
+          cellW,
+          cellH,
+          buildMode: buildModeRef.current,
+        });
+      }
       if (cellW === 0 || cellH === 0) return;
       const col = Math.floor(locationX / cellW);
       const row = Math.floor(locationY / cellH);
       if (row >= 0 && row < GRID_ROWS && col >= 0 && col < GRID_COLS) {
-        onCellPress(row, col);
+        onCellPressRef.current(row, col);
       }
     },
-    [onCellPress]
+    [] // stable – reads only refs
   );
 
   return (
@@ -322,7 +336,11 @@ export default function PixiGameRenderer({
         })}
       </View>
 
-      <Pressable style={StyleSheet.absoluteFill} onPress={handleTouch} />
+      <View
+        style={StyleSheet.absoluteFill}
+        onStartShouldSetResponder={() => true}
+        onResponderGrant={handleTouchStart}
+      />
     </View>
   );
 }
