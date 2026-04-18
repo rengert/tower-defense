@@ -49,6 +49,7 @@ export const TOWER_COOLDOWN_MS = 1000;
 export const ENEMY_BASE_HEALTH = 60;
 export const ENEMY_HEALTH_SCALE_PER_WAVE = 20;
 export const ENEMY_GOLD_REWARD = 20;
+export const PROJECTILE_TTL_MS = 140;
 export const SPAWN_INTERVAL_MS = 2000;
 export const WAVE_BREAK_MS = 4000; // pause between waves
 

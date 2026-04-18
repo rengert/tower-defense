@@ -184,7 +184,21 @@ describe('tickGame', () => {
     if (distToEnemy <= TOWER_STATS.archer.range) {
       // should have fired
       expect(next.enemies[0].health).toBe(60 - TOWER_STATS.archer.damage);
+      expect(next.projectiles.length).toBeGreaterThan(0);
     }
+  });
+
+  it('expires projectiles after their ttl', () => {
+    const state: GameState = {
+      ...createInitialState(),
+      enemies: [{ id: 1, col: 5, health: 60, maxHealth: 60 }],
+      towers: [{ id: 1, row: PATH_ROW - 1, col: 5, cooldownMs: 0, towerType: 'archer' }],
+      enemiesSpawned: ENEMIES_PER_WAVE,
+    };
+    const fired = tickGame(state);
+    expect(fired.projectiles.length).toBeGreaterThan(0);
+    const advanced = tickGame(fired, 500);
+    expect(advanced.projectiles).toHaveLength(0);
   });
 
   it('tower does not fire when enemy is out of range', () => {

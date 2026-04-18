@@ -14,6 +14,7 @@ import {
   STARTING_LIVES,
   TICK_MS,
   TOTAL_WAVES,
+  PROJECTILE_TTL_MS,
   TOWER_STATS,
   type TowerStats,
   WAVE_BREAK_MS,
@@ -170,6 +171,7 @@ export function createInitialState(level: number = 1): GameState {
   return {
     enemies: [],
     towers: [],
+    projectiles: [],
     gold: STARTING_GOLD,
     lives: STARTING_LIVES,
     wave: 1,
@@ -180,6 +182,7 @@ export function createInitialState(level: number = 1): GameState {
     lastSpawnMs: -SPAWN_INTERVAL_MS,
     nextEnemyId: 1,
     nextTowerId: 1,
+    nextProjectileId: 1,
     level: Math.max(1, Math.floor(level)),
   };
 }
@@ -196,9 +199,12 @@ export function tickGame(
 
   let enemies: Enemy[] = [...prev.enemies];
   let towers: Tower[] = [...prev.towers];
+  let projectiles = prev.projectiles
+    .map((projectile) => ({ ...projectile, ttlMs: projectile.ttlMs - dtMs }))
+    .filter((projectile) => projectile.ttlMs > 0);
   let {
     gold, lives, wave, status, enemiesSpawned, enemiesKilled,
-    elapsedMs, lastSpawnMs, nextEnemyId, nextTowerId,
+    elapsedMs, lastSpawnMs, nextEnemyId, nextTowerId, nextProjectileId,
   } = prev;
 
   elapsedMs += dtMs;
@@ -284,6 +290,22 @@ export function tickGame(
       mutableEnemies = mutableEnemies.map((e) =>
         e.id === targetId ? { ...e, health: e.health - stats.damage } : e
       );
+
+      const enemyCat = target.category ?? 'ground';
+      const targetRow = target.row ?? (enemyCat === 'air' ? AIR_ROW : PATH_ROW);
+      projectiles = [
+        ...projectiles,
+        {
+          id: nextProjectileId++,
+          fromRow: tower.row + 0.5,
+          fromCol: tower.col + 0.5,
+          toRow: targetRow + 0.5,
+          toCol: target.col + 0.5,
+          ttlMs: PROJECTILE_TTL_MS,
+          towerType: tower.towerType ?? 'archer',
+        },
+      ];
+
       return { ...tower, cooldownMs: stats.cooldownMs };
     }
     return { ...tower, cooldownMs: 0 };
@@ -311,8 +333,8 @@ export function tickGame(
   if (lives <= 0) status = 'lost';
 
   return {
-    enemies, towers, gold, lives, wave, status,
-    enemiesSpawned, enemiesKilled, elapsedMs, lastSpawnMs, nextEnemyId, nextTowerId,
+    enemies, towers, projectiles, gold, lives, wave, status,
+    enemiesSpawned, enemiesKilled, elapsedMs, lastSpawnMs, nextEnemyId, nextTowerId, nextProjectileId,
     level: prev.level,
   };
 }

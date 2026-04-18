@@ -40,11 +40,24 @@ export interface Tower {
   towerType?: TowerType;
 }
 
+/** Short-lived visual projectile spawned when a tower fires. */
+export interface Projectile {
+  id: number;
+  fromRow: number;
+  fromCol: number;
+  toRow: number;
+  toCol: number;
+  /** Remaining lifespan in ms. Projectile is removed at <= 0. */
+  ttlMs: number;
+  towerType: TowerType;
+}
+
 export type GameStatus = 'playing' | 'won' | 'lost';
 
 export interface GameState {
   enemies: Enemy[];
   towers: Tower[];
+  projectiles: Projectile[];
   gold: number;
   lives: number;
   /** Current run level (meta progression difficulty tier). */
@@ -59,4 +72,5 @@ export interface GameState {
   lastSpawnMs: number;
   nextEnemyId: number;
   nextTowerId: number;
+  nextProjectileId: number;
 }

@@ -35,6 +35,12 @@ const TOWER_SPRITES = {
   magic:  require('../assets/towers/magic.png'),
 } as const;
 
+const PROJECTILE_COLOR: Record<TowerType, string> = {
+  archer: '#f5c842',
+  cannon: '#f97316',
+  magic: '#a78bfa',
+};
+
 interface Props {
   /** Called on every game-loop tick so the parent can update HUD / overlay state. */
   onTick: (dtMs: number) => void;
@@ -385,6 +391,36 @@ export default function PixiGameRenderer({
             </React.Fragment>
           );
         })}
+
+        {state.projectiles.map((projectile) => {
+          const fromX = dims.offsetX + projectile.fromCol * dims.cellW;
+          const fromY = dims.offsetY + projectile.fromRow * dims.cellH;
+          const toX = dims.offsetX + projectile.toCol * dims.cellW;
+          const toY = dims.offsetY + projectile.toRow * dims.cellH;
+          const dx = toX - fromX;
+          const dy = toY - fromY;
+          const length = Math.sqrt(dx * dx + dy * dy);
+          const angle = Math.atan2(dy, dx);
+          const alpha = Math.max(0.22, Math.min(0.95, projectile.ttlMs / 140));
+          const color = PROJECTILE_COLOR[projectile.towerType];
+          return (
+            <View
+              key={`projectile-${projectile.id}`}
+              pointerEvents="none"
+              style={[
+                styles.projectile,
+                {
+                  left: fromX,
+                  top: fromY,
+                  width: length,
+                  transform: [{ rotate: `${angle}rad` }],
+                  backgroundColor: color,
+                  opacity: alpha,
+                },
+              ]}
+            />
+          );
+        })}
       </View>
 
       <View
@@ -445,5 +481,14 @@ const styles = StyleSheet.create({
   hpBar: {
     position: 'absolute',
     borderRadius: 3,
+  },
+  projectile: {
+    position: 'absolute',
+    height: 2,
+    borderRadius: 999,
+    transformOrigin: 'left center',
+    shadowColor: '#ffffff',
+    shadowOpacity: 0.5,
+    shadowRadius: 2,
   },
 });
