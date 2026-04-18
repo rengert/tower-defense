@@ -11,7 +11,6 @@ import {
   GRID_ROWS,
   PATH_ROW,
   TOWER_COST,
-  TOWER_RANGE,
 } from './game/constants';
 import { findShortestPath } from './game/logic';
 import type { GameState } from './game/types';
@@ -85,7 +84,7 @@ export default function PixiGameRenderer({
   buildMode,
   onDiagnosticsChange,
 }: Props) {
-  const dimsRef = useRef({ width: 0, height: 0, cellW: 0, cellH: 0 });
+  const dimsRef = useRef({ width: 0, height: 0, cellW: 0, cellH: 0, offsetX: 0, offsetY: 0 });
   const [dims, setDims] = useState(dimsRef.current);
   const [frameVersion, setFrameVersion] = useState(0);
   const runningRef = useRef(running);
@@ -112,7 +111,6 @@ export default function PixiGameRenderer({
     emitDiagnostics(INITIAL_DIAGNOSTICS);
 
     if (__DEV__) {
-      // eslint-disable-next-line no-console
       console.info('[PixiGameRenderer] RN fallback renderer ready');
     }
     emitDiagnostics({ glReady: true, rendererReady: true, lastError: null });
@@ -130,7 +128,6 @@ export default function PixiGameRenderer({
           const frameCount = diagRef.current.frameCount + 1;
           emitDiagnostics({ frameCount, lastFrameMs: Date.now(), lastError: null });
           if (__DEV__ && frameCount % 120 === 0) {
-            // eslint-disable-next-line no-console
             console.info('[PixiGameRenderer] frame heartbeat', { frameCount });
           }
           setFrameVersion((v) => v + 1);
@@ -138,7 +135,6 @@ export default function PixiGameRenderer({
           const message = error instanceof Error ? error.message : String(error);
           emitDiagnostics({ lastError: message });
           if (__DEV__) {
-            // eslint-disable-next-line no-console
             console.error('[PixiGameRenderer] render error', error);
           }
         }
@@ -163,11 +159,17 @@ export default function PixiGameRenderer({
   // ── Compute cell dimensions ──────────────────────────────────────────────
   const handleLayout = useCallback((e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
+    // Use a uniform cell size so every cell is a perfect square.
+    const cellSize = Math.min(width / GRID_COLS, height / GRID_ROWS);
+    const gridW = cellSize * GRID_COLS;
+    const gridH = cellSize * GRID_ROWS;
     const next = {
       width,
       height,
-      cellW: width / GRID_COLS,
-      cellH: height / GRID_ROWS,
+      cellW: cellSize,
+      cellH: cellSize,
+      offsetX: (width - gridW) / 2,
+      offsetY: (height - gridH) / 2,
     };
     dimsRef.current = next;
     setDims(next);
@@ -175,7 +177,7 @@ export default function PixiGameRenderer({
   const state = gameStateRef.current;
 
   const cells = useMemo(() => {
-    const list: Array<{ key: string; x: number; y: number; color: string }> = [];
+    const list: { key: string; x: number; y: number; color: string }[] = [];
     const towerSet = new Set(state.towers.map((t) => `${t.row},${t.col}`));
     const currentPath = findShortestPath(state.towers);
     const pathSet = currentPath
@@ -196,13 +198,15 @@ export default function PixiGameRenderer({
         } else if (pathSet.has(`${r},${c}`)) {
           color = C.pathRow;
         }
-        list.push({ key, x: c * dims.cellW, y: r * dims.cellH, color });
+        list.push({ key, x: dims.offsetX + c * dims.cellW, y: dims.offsetY + r * dims.cellH, color });
       }
     }
     return list;
-    // frameVersion keeps this derived data in sync with ref-based game updates.
-    // buildMode is now a direct dep so highlights appear immediately on toggle.
-  }, [buildMode, dims.cellH, dims.cellW, frameVersion, state.gold, state.towers]);
+    // frameVersion is intentionally included so the memo re-reads the mutable
+    // gameStateRef on every animation frame. The exhaustive-deps warning is
+    // expected and safe to suppress here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buildMode, dims.cellH, dims.cellW, dims.offsetX, dims.offsetY, frameVersion, state.gold, state.towers]);
 
   // Keep a ref so the responder callbacks always use the latest onCellPress
   // without needing to re-register the responder on every render.
@@ -215,7 +219,6 @@ export default function PixiGameRenderer({
       const { locationX, locationY } = event.nativeEvent;
       const { cellW, cellH } = dimsRef.current;
       if (__DEV__) {
-        // eslint-disable-next-line no-console
         console.info('[PixiGameRenderer] touch', {
           locationX,
           locationY,
@@ -225,8 +228,9 @@ export default function PixiGameRenderer({
         });
       }
       if (cellW === 0 || cellH === 0) return;
-      const col = Math.floor(locationX / cellW);
-      const row = Math.floor(locationY / cellH);
+      const { offsetX, offsetY } = dimsRef.current;
+      const col = Math.floor((locationX - offsetX) / cellW);
+      const row = Math.floor((locationY - offsetY) / cellH);
       if (row >= 0 && row < GRID_ROWS && col >= 0 && col < GRID_COLS) {
         onCellPressRef.current(row, col);
       }
@@ -240,7 +244,6 @@ export default function PixiGameRenderer({
         {cells.map((cell) => (
           <View
             key={cell.key}
-            pointerEvents="none"
             style={[
               styles.cell,
               {
@@ -257,8 +260,8 @@ export default function PixiGameRenderer({
 
         {state.towers.map((tower) => {
           const padding = dims.cellH * 0.05;
-          const x = tower.col * dims.cellW + padding;
-          const y = tower.row * dims.cellH + padding;
+          const x = dims.offsetX + tower.col * dims.cellW + padding;
+          const y = dims.offsetY + tower.row * dims.cellH + padding;
           const w = dims.cellW - padding * 2;
           const h = dims.cellH - padding * 2;
           const sprite = TOWER_SPRITES[tower.towerType ?? DEFAULT_TOWER_TYPE];
@@ -266,7 +269,6 @@ export default function PixiGameRenderer({
             <Image
               key={`tower-${tower.id}`}
               source={sprite}
-              pointerEvents="none"
               style={[
                 styles.tower,
                 {
@@ -282,12 +284,12 @@ export default function PixiGameRenderer({
         })}
 
         {state.enemies.map((enemy) => {
-          const pathY = (enemy.row ?? PATH_ROW) * dims.cellH;
+          const pathY = dims.offsetY + (enemy.row ?? PATH_ROW) * dims.cellH;
           const padding = dims.cellH * 0.1;
           const enemyH = dims.cellH * 0.6;
           const hpBarH = 5;
           const hpBarY = pathY + padding + enemyH + 3;
-          const x = enemy.col * dims.cellW + padding;
+          const x = dims.offsetX + enemy.col * dims.cellW + padding;
           const w = dims.cellW - padding * 2;
           const hpRatio = Math.max(0, enemy.health / enemy.maxHealth);
           const hpColor = hpRatio > 0.5 ? C.hpFull : hpRatio > 0.25 ? C.hpLow : C.hpEmpty;
@@ -297,7 +299,6 @@ export default function PixiGameRenderer({
             <React.Fragment key={`enemy-${enemy.id}`}>
               <Image
                 source={sprite}
-                pointerEvents="none"
                 style={[
                   styles.enemy,
                   {
