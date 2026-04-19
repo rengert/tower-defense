@@ -44,7 +44,15 @@ export default function StartMenuScreen({
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.container}
+      horizontal={false}
+      alwaysBounceHorizontal={false}
+      bounces={false}
+      showsHorizontalScrollIndicator={false}
+    >
+      <View style={styles.content}>
       <View style={styles.heroSection}>
         <Text style={styles.towerIcon}>🗼</Text>
         <Text style={styles.title}>TOWER{`\n`}DEFENSE</Text>
@@ -160,19 +168,27 @@ export default function StartMenuScreen({
           );
         })}
       </View>
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  scroll: {
     flex: 1,
     backgroundColor: '#0d1017',
-    alignItems: 'center',
+  },
+  container: {
+    flexGrow: 1,
     justifyContent: 'flex-start',
-    paddingHorizontal: 32,
+    paddingHorizontal: 14,
     paddingTop: 30,
     paddingBottom: 40,
+  },
+  content: {
+    width: '100%',
+    maxWidth: 560,
+    alignSelf: 'center',
   },
   heroSection: {
     alignItems: 'center',
@@ -351,17 +367,19 @@ const styles = StyleSheet.create({
   },
   upgradeRow: {
     flexDirection: 'row',
-    gap: 8,
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     marginTop: 10,
   },
   upgradeButton: {
-    flex: 1,
+    width: '31%',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: 'rgba(245,200,66,0.35)',
     backgroundColor: 'rgba(245,200,66,0.08)',
     paddingVertical: 7,
     alignItems: 'center',
+    marginBottom: 8,
   },
   upgradeButtonDisabled: {
     opacity: 0.35,
