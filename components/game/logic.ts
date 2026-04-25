@@ -19,7 +19,7 @@ import {
   type TowerStats,
   WAVE_BREAK_MS,
 } from './constants';
-import type { EnemyCategory, EnemyType, Enemy, GameState, Tower, TowerType } from './types';
+import type { EnemyCategory, EnemyType, Enemy, GameState, Obstacle, ObstacleVariant, Tower, TowerType } from './types';
 
 /** A cell coordinate on the game grid. */
 export type GridPoint = { row: number; col: number };
@@ -84,6 +84,12 @@ const ENEMY_SPAWN_COLUMN = -1;
 /** Sentinel ID used for hypothetical towers during path validation. */
 const HYPOTHETICAL_TOWER_ID = -1;
 
+/** Deterministic obstacle generation tuning. */
+const BASE_OBSTACLE_COUNT = 4;
+const MAX_OBSTACLE_COUNT = 14;
+const OBSTACLE_PLACEMENT_ATTEMPTS = 3;
+const OBSTACLE_VARIANTS: readonly ObstacleVariant[] = ['rockA', 'rockB', 'rockC'];
+
 /** Traversal order: right first so the default path goes straight along PATH_ROW. */
 const NEIGHBOR_DIRECTIONS: readonly (readonly [number, number])[] = [
   [0, 1],   // right
@@ -92,27 +98,111 @@ const NEIGHBOR_DIRECTIONS: readonly (readonly [number, number])[] = [
   [1, 0],   // down
 ];
 
+function toCellKey(row: number, col: number): string {
+  return `${row},${col}`;
+}
+
+function buildBlockedSet(towers: Tower[], obstacles: Obstacle[]): Set<string> {
+  const blocked = new Set<string>();
+  for (const tower of towers) {
+    blocked.add(toCellKey(tower.row, tower.col));
+  }
+  for (const obstacle of obstacles) {
+    blocked.add(toCellKey(obstacle.row, obstacle.col));
+  }
+  return blocked;
+}
+
+function createSeededRng(seed: number): () => number {
+  let state = (seed >>> 0) || 1;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
+
+function pickObstacleVariant(index: number, random: () => number): ObstacleVariant {
+  const offset = Math.floor(random() * OBSTACLE_VARIANTS.length);
+  return OBSTACLE_VARIANTS[(index + offset) % OBSTACLE_VARIANTS.length];
+}
+
+function shufflePoints(points: GridPoint[], random: () => number): GridPoint[] {
+  const copy = [...points];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+/**
+ * Builds deterministic obstacle layouts while guaranteeing at least one
+ * navigable ground path from spawn to exit.
+ */
+export function generateObstaclesForLevel(level: number): Obstacle[] {
+  const safeLevel = Math.max(1, Math.floor(level));
+  const targetCount = Math.min(
+    MAX_OBSTACLE_COUNT,
+    BASE_OBSTACLE_COUNT + Math.floor((safeLevel - 1) * 1.5)
+  );
+
+  const candidates: GridPoint[] = [];
+  for (let row = 0; row < GRID_ROWS; row++) {
+    for (let col = 0; col < GRID_COLS; col++) {
+      // Keep spawn and exit anchors free.
+      if (row === PATH_ROW && (col === 0 || col === GRID_COLS - 1)) continue;
+      candidates.push({ row, col });
+    }
+  }
+
+  for (let attempt = 0; attempt < OBSTACLE_PLACEMENT_ATTEMPTS; attempt++) {
+    const random = createSeededRng(safeLevel * 1009 + 17 + attempt * 53);
+    const ordered = shufflePoints(candidates, random);
+    const obstacles: Obstacle[] = [];
+
+    for (const point of ordered) {
+      if (obstacles.length >= targetCount) break;
+      const nextObstacle: Obstacle = {
+        id: obstacles.length + 1,
+        row: point.row,
+        col: point.col,
+        variant: pickObstacleVariant(obstacles.length, random),
+      };
+      const withCandidate = [...obstacles, nextObstacle];
+      if (findShortestPath([], withCandidate) !== null) {
+        obstacles.push(nextObstacle);
+      }
+    }
+
+    if (findShortestPath([], obstacles) !== null) {
+      return obstacles;
+    }
+  }
+
+  return [];
+}
+
 /**
  * Finds the shortest path for ground enemies from (PATH_ROW, 0) to
  * (PATH_ROW, GRID_COLS-1), avoiding cells occupied by towers.
  * Returns an array of grid cells, or null if no path exists.
  */
-export function findShortestPath(towers: Tower[]): GridPoint[] | null {
-  const blocked = new Set(towers.map((tower) => `${tower.row},${tower.col}`));
+export function findShortestPath(towers: Tower[], obstacles: Obstacle[] = []): GridPoint[] | null {
+  const blocked = buildBlockedSet(towers, obstacles);
 
   const startRow = PATH_ROW;
   const startCol = 0;
   const endRow = PATH_ROW;
   const endCol = GRID_COLS - 1;
 
-  if (blocked.has(`${startRow},${startCol}`) || blocked.has(`${endRow},${endCol}`)) {
+  if (blocked.has(toCellKey(startRow, startCol)) || blocked.has(toCellKey(endRow, endCol))) {
     return null;
   }
 
   type PathNode = { row: number; col: number; parent: PathNode | null };
   const start: PathNode = { row: startRow, col: startCol, parent: null };
   const queue: PathNode[] = [start];
-  const visited = new Set<string>([`${startRow},${startCol}`]);
+  const visited = new Set<string>([toCellKey(startRow, startCol)]);
 
   while (queue.length > 0) {
     const current = queue.shift()!;
@@ -130,7 +220,7 @@ export function findShortestPath(towers: Tower[]): GridPoint[] | null {
       const neighborRow = current.row + deltaRow;
       const neighborColumn = current.col + deltaColumn;
       if (neighborRow < 0 || neighborRow >= GRID_ROWS || neighborColumn < 0 || neighborColumn >= GRID_COLS) continue;
-      const key = `${neighborRow},${neighborColumn}`;
+      const key = toCellKey(neighborRow, neighborColumn);
       if (visited.has(key) || blocked.has(key)) continue;
       visited.add(key);
       queue.push({ row: neighborRow, col: neighborColumn, parent: current });
@@ -140,8 +230,8 @@ export function findShortestPath(towers: Tower[]): GridPoint[] | null {
   return null;
 }
 
-function buildFullPath(towers: Tower[]): GridPoint[] {
-  const core = findShortestPath(towers);
+function buildFullPath(towers: Tower[], obstacles: Obstacle[]): GridPoint[] {
+  const core = findShortestPath(towers, obstacles);
   const fallback: GridPoint[] = Array.from({ length: GRID_COLS }, (_, column) => ({
     row: PATH_ROW,
     col: column,
@@ -168,9 +258,11 @@ function positionOnPath(fullPath: GridPoint[], progress: number): GridPoint {
 }
 
 export function createInitialState(level: number = 1): GameState {
+  const safeLevel = Math.max(1, Math.floor(level));
   return {
     enemies: [],
     towers: [],
+    obstacles: generateObstaclesForLevel(safeLevel),
     projectiles: [],
     gold: STARTING_GOLD,
     lives: STARTING_LIVES,
@@ -183,7 +275,7 @@ export function createInitialState(level: number = 1): GameState {
     nextEnemyId: 1,
     nextTowerId: 1,
     nextProjectileId: 1,
-    level: Math.max(1, Math.floor(level)),
+    level: safeLevel,
   };
 }
 
@@ -199,6 +291,7 @@ export function tickGame(
 
   let enemies: Enemy[] = [...prev.enemies];
   let towers: Tower[] = [...prev.towers];
+  const obstacles = prev.obstacles;
   let projectiles = prev.projectiles
     .map((projectile) => ({ ...projectile, ttlMs: projectile.ttlMs - dtMs }))
     .filter((projectile) => projectile.ttlMs > 0);
@@ -235,7 +328,7 @@ export function tickGame(
   }
 
   // ── Move enemies ──────────────────────────────────────────────────────────
-  const fullPath = buildFullPath(towers);
+  const fullPath = buildFullPath(towers, obstacles);
   const groundColumnsPerMs = (ENEMY_SPEED * levelDifficulty.groundSpeedMultiplier) / 1000;
   const airColumnsPerMs = (ENEMY_AIR_SPEED * levelDifficulty.airSpeedMultiplier) / 1000;
 
@@ -333,7 +426,7 @@ export function tickGame(
   if (lives <= 0) status = 'lost';
 
   return {
-    enemies, towers, projectiles, gold, lives, wave, status,
+    enemies, towers, obstacles, projectiles, gold, lives, wave, status,
     enemiesSpawned, enemiesKilled, elapsedMs, lastSpawnMs, nextEnemyId, nextTowerId, nextProjectileId,
     level: prev.level,
   };
@@ -354,11 +447,12 @@ export function canPlaceTower(
   const { cost } = towerStats[towerType];
   if (state.gold < cost) return false;
   if (state.towers.some((tower) => tower.row === row && tower.col === col)) return false;
+  if (state.obstacles.some((obstacle) => obstacle.row === row && obstacle.col === col)) return false;
   const hypothetical: Tower[] = [
     ...state.towers,
     { id: HYPOTHETICAL_TOWER_ID, row, col, cooldownMs: 0 },
   ];
-  return findShortestPath(hypothetical) !== null;
+  return findShortestPath(hypothetical, state.obstacles) !== null;
 }
 
 /**

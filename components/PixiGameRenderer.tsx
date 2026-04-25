@@ -14,7 +14,7 @@ import {
   TOWER_STATS,
 } from './game/constants';
 import { findShortestPath } from './game/logic';
-import type { GameState, TowerType } from './game/types';
+import type { GameState, ObstacleVariant, TowerType } from './game/types';
 
 // ── Kenney enemy sprites – air variants reuse ground sprites with visual tint ─
 const DEFAULT_ENEMY_TYPE = 'goblin' as const;
@@ -39,6 +39,12 @@ const PROJECTILE_COLOR: Record<TowerType, string> = {
   archer: '#f5c842',
   cannon: '#f97316',
   magic: '#a78bfa',
+};
+
+const OBSTACLE_STYLE: Record<ObstacleVariant, { fill: string; border: string; accent: string; rotateDeg: string }> = {
+  rockA: { fill: '#5a6475', border: '#3a4250', accent: '#8994a8', rotateDeg: '-8deg' },
+  rockB: { fill: '#6a5c54', border: '#463c36', accent: '#9d8a7f', rotateDeg: '7deg' },
+  rockC: { fill: '#4d615a', border: '#30413b', accent: '#7f9b91', rotateDeg: '-3deg' },
 };
 
 interface Props {
@@ -90,6 +96,7 @@ const C = {
   hpBg: '#111827',
   airHpFull: '#38bdf8',  // sky-blue HP for air enemies
   airHpLow: '#7dd3fc',
+  obstacleCell: '#1f2633',
 };
 
 export default function PixiGameRenderer({
@@ -195,7 +202,8 @@ export default function PixiGameRenderer({
   const cells = useMemo(() => {
     const list: { key: string; x: number; y: number; color: string }[] = [];
     const towerSet = new Set(state.towers.map((t) => `${t.row},${t.col}`));
-    const currentPath = findShortestPath(state.towers);
+    const obstacleSet = new Set(state.obstacles.map((o) => `${o.row},${o.col}`));
+    const currentPath = findShortestPath(state.towers, state.obstacles);
     const pathSet = currentPath
       ? new Set(currentPath.map((point) => `${point.row},${point.col}`))
       : new Set<string>();
@@ -207,6 +215,8 @@ export default function PixiGameRenderer({
         let color = C.cell;
         if (towerSet.has(`${r},${c}`)) {
           color = C.towerCell;
+        } else if (obstacleSet.has(`${r},${c}`)) {
+          color = C.obstacleCell;
         } else if (inBuildMode) {
           color = C.buildHighlight;
         } else if (r === AIR_ROW) {
@@ -219,7 +229,7 @@ export default function PixiGameRenderer({
     }
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildTowerType, dims.cellH, dims.cellW, dims.offsetX, dims.offsetY, frameVersion, state.gold, state.towers]);
+  }, [buildTowerType, dims.cellH, dims.cellW, dims.offsetX, dims.offsetY, frameVersion, state.gold, state.obstacles, state.towers]);
 
   // Keep a ref so the responder callbacks always use the latest onCellPress
   // without needing to re-register the responder on every render.
@@ -309,6 +319,46 @@ export default function PixiGameRenderer({
               >
                 <Text style={styles.towerBadgeText}>{towerEmoji}</Text>
               </View>
+            </React.Fragment>
+          );
+        })}
+
+        {state.obstacles.map((obstacle) => {
+          const padding = dims.cellH * 0.12;
+          const x = dims.offsetX + obstacle.col * dims.cellW + padding;
+          const y = dims.offsetY + obstacle.row * dims.cellH + padding;
+          const size = Math.min(dims.cellW, dims.cellH) - padding * 2;
+          const style = OBSTACLE_STYLE[obstacle.variant];
+          return (
+            <React.Fragment key={`obstacle-${obstacle.id}`}>
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.obstacle,
+                  {
+                    left: x,
+                    top: y,
+                    width: size,
+                    height: size,
+                    backgroundColor: style.fill,
+                    borderColor: style.border,
+                    transform: [{ rotate: style.rotateDeg }],
+                  },
+                ]}
+              />
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.obstacleAccent,
+                  {
+                    left: x + size * 0.2,
+                    top: y + size * 0.18,
+                    width: size * 0.28,
+                    height: size * 0.2,
+                    backgroundColor: style.accent,
+                  },
+                ]}
+              />
             </React.Fragment>
           );
         })}
@@ -481,6 +531,17 @@ const styles = StyleSheet.create({
   hpBar: {
     position: 'absolute',
     borderRadius: 3,
+  },
+  obstacle: {
+    position: 'absolute',
+    borderRadius: 8,
+    borderWidth: 1,
+    opacity: 0.95,
+  },
+  obstacleAccent: {
+    position: 'absolute',
+    borderRadius: 999,
+    opacity: 0.9,
   },
   projectile: {
     position: 'absolute',

@@ -11,6 +11,16 @@ export type EnemyType = GroundEnemyType | AirEnemyType;
 /** Visual sprite variant for a tower, assigned at placement time. */
 export type TowerType = 'archer' | 'cannon' | 'magic';
 
+/** Visual variant for static map obstacles. */
+export type ObstacleVariant = 'rockA' | 'rockB' | 'rockC';
+
+export interface Obstacle {
+  id: number;
+  row: number;
+  col: number;
+  variant: ObstacleVariant;
+}
+
 export interface Enemy {
   id: number;
   /** Float column position (x in grid cells). */
@@ -57,6 +67,7 @@ export type GameStatus = 'playing' | 'won' | 'lost';
 export interface GameState {
   enemies: Enemy[];
   towers: Tower[];
+  obstacles: Obstacle[];
   projectiles: Projectile[];
   gold: number;
   lives: number;

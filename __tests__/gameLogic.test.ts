@@ -1,4 +1,5 @@
 import {
+  generateObstaclesForLevel,
   findShortestPath,
   canPlaceTower,
   createInitialState,
@@ -38,6 +39,22 @@ describe('createInitialState', () => {
   it('supports creating a state for a specific level', () => {
     const state = createInitialState(4);
     expect(state.level).toBe(4);
+  });
+
+  it('creates obstacle layouts that still keep a ground path open', () => {
+    const state = createInitialState(3);
+    expect(state.obstacles.length).toBeGreaterThan(0);
+    expect(findShortestPath([], state.obstacles)).not.toBeNull();
+  });
+});
+
+describe('generateObstaclesForLevel', () => {
+  it('creates deterministic obstacle variants per level and keeps at least one route', () => {
+    const first = generateObstaclesForLevel(5);
+    const second = generateObstaclesForLevel(5);
+    expect(first).toEqual(second);
+    expect(findShortestPath([], first)).not.toBeNull();
+    expect(new Set(first.map((o) => o.variant)).size).toBeGreaterThan(1);
   });
 });
 
@@ -90,6 +107,16 @@ describe('findShortestPath', () => {
   it('returns null when the end cell is blocked', () => {
     const towers: Tower[] = [{ id: 1, row: PATH_ROW, col: GRID_COLS - 1, cooldownMs: 0 }];
     expect(findShortestPath(towers)).toBeNull();
+  });
+
+  it('treats obstacles as blocking for ground pathing', () => {
+    const obstacles = Array.from({ length: GRID_ROWS }, (_, rowIndex) => ({
+      id: rowIndex + 1,
+      row: rowIndex,
+      col: 6,
+      variant: 'rockA' as const,
+    }));
+    expect(findShortestPath([], obstacles)).toBeNull();
   });
 });
 
@@ -336,6 +363,12 @@ describe('canPlaceTower', () => {
       towers: [{ id: 1, row: 2, col: 5, cooldownMs: 0 }],
     };
     expect(canPlaceTower(state, 2, 5)).toBe(false);
+  });
+
+  it('returns false when the cell contains an obstacle', () => {
+    const state = createInitialState(2);
+    const obstacle = state.obstacles[0];
+    expect(canPlaceTower(state, obstacle.row, obstacle.col)).toBe(false);
   });
 
   it('returns true for a valid empty cell', () => {
