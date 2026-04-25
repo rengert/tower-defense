@@ -168,60 +168,74 @@ export default function GameScreen({
 
       {/* ── Footer – Build Controls ──────────────────────────────────────── */}
       <View style={styles.footer}>
-        {buildTowerType ? (
-          /* Cancel button shown while a tower type is selected */
-          <TouchableOpacity
-            style={styles.cancelBtn}
-            onPress={() => setBuildTowerType(null)}
-            accessibilityRole="button"
-            accessibilityLabel={t.cancelBuildA11y}
-          >
-            <Text style={styles.cancelBtnText}>{t.cancelBuild}</Text>
-          </TouchableOpacity>
-        ) : (
-          /* Three tower-type buttons */
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.towerRow}
-          >
-            {towerChoices.map((type) => {
-              const stats = effectiveTowerStats[type];
-              const canAfford = hudGold >= stats.cost;
-              const targetLabel =
-                stats.targets.length === 2
-                  ? t.towerTargetAll
-                  : stats.targets[0] === 'ground'
-                  ? t.towerTargetGround
-                  : t.towerTargetAir;
-              const name =
-                type === 'archer'
-                  ? t.towerArcherName
-                  : type === 'cannon'
-                  ? t.towerCannonName
-                  : t.towerMagicName;
-              return (
-                <TouchableOpacity
-                  key={type}
-                  style={[styles.towerBtn, !canAfford && styles.towerBtnDisabled]}
-                  onPress={() => canAfford && setBuildTowerType(type)}
-                  disabled={!canAfford}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${name} ${stats.cost} Gold ${targetLabel}`}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.towerRow}
+        >
+          {towerChoices.map((type) => {
+            const stats = effectiveTowerStats[type];
+            const canAfford = hudGold >= stats.cost;
+            const isSelected = buildTowerType === type;
+            const targetLabel =
+              stats.targets.length === 2
+                ? t.towerTargetAll
+                : stats.targets[0] === 'ground'
+                ? t.towerTargetGround
+                : t.towerTargetAir;
+            const name =
+              type === 'archer'
+                ? t.towerArcherName
+                : type === 'cannon'
+                ? t.towerCannonName
+                : t.towerMagicName;
+            return (
+              <TouchableOpacity
+                key={type}
+                style={[
+                  styles.towerBtn,
+                  isSelected && styles.towerBtnActive,
+                  !canAfford && styles.towerBtnDisabled,
+                ]}
+                onPress={() => canAfford && setBuildTowerType(type)}
+                disabled={!canAfford}
+                accessibilityRole="button"
+                accessibilityLabel={`${name} ${stats.cost} Gold ${targetLabel}`}
+                accessibilityState={{ disabled: !canAfford, selected: isSelected }}
+                testID={`tower-build-${type}`}
+              >
+                {isSelected && <View style={styles.towerBtnActiveDot} />}
+                <Text style={styles.towerBtnEmoji}>{stats.emoji}</Text>
+                <Text
+                  style={[
+                    styles.towerBtnName,
+                    isSelected && styles.towerBtnNameActive,
+                    !canAfford && styles.towerBtnTextDisabled,
+                  ]}
                 >
-                  <Text style={styles.towerBtnEmoji}>{stats.emoji}</Text>
-                  <Text style={[styles.towerBtnName, !canAfford && styles.towerBtnTextDisabled]}>
-                    {name}
-                  </Text>
-                  <Text style={[styles.towerBtnCost, !canAfford && styles.towerBtnTextDisabled]}>
-                    {stats.cost} 💰
-                  </Text>
-                  <Text style={styles.towerBtnTarget}>{targetLabel}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        )}
+                  {name}
+                </Text>
+                <Text
+                  style={[
+                    styles.towerBtnCost,
+                    isSelected && styles.towerBtnCostActive,
+                    !canAfford && styles.towerBtnTextDisabled,
+                  ]}
+                >
+                  {stats.cost} 💰
+                </Text>
+                <Text
+                  style={[
+                    styles.towerBtnTarget,
+                    isSelected && styles.towerBtnTargetActive,
+                  ]}
+                >
+                  {targetLabel}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       {/* ── Pause Menu ───────────────────────────────────────────────────── */}
@@ -366,17 +380,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.06)',
   },
-  // ── Cancel button (shown when a tower type is selected) ──────────────────
-  cancelBtn: {
-    backgroundColor: '#2a1010',
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#ef4444',
-    alignItems: 'center',
-    marginHorizontal: 6,
-  },
-  cancelBtnText: { fontSize: 15, fontWeight: '700', color: '#ef4444', letterSpacing: 0.5 },
   // ── Tower-type build buttons ──────────────────────────────────────────────
   towerRow: {
     flexDirection: 'row',
@@ -394,16 +397,37 @@ const styles = StyleSheet.create({
     borderColor: '#3dba78',
     alignItems: 'center',
     gap: 2,
+    overflow: 'hidden',
+  },
+  towerBtnActive: {
+    backgroundColor: '#173929',
+    borderColor: '#f5c842',
+    shadowColor: '#f5c842',
+    shadowOpacity: 0.28,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
   },
   towerBtnDisabled: {
     backgroundColor: '#111b2d',
     borderColor: 'rgba(255,255,255,0.1)',
     opacity: 0.5,
   },
+  towerBtnActiveDot: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: '#f5c842',
+  },
   towerBtnEmoji: { fontSize: 22 },
   towerBtnName: { fontSize: 11, fontWeight: '700', color: '#d8e8f0', letterSpacing: 0.3 },
+  towerBtnNameActive: { color: '#fff6d2' },
   towerBtnCost: { fontSize: 12, fontWeight: '600', color: '#f5c842' },
+  towerBtnCostActive: { color: '#ffe08a' },
   towerBtnTarget: { fontSize: 10, color: '#5a7080', marginTop: 1 },
+  towerBtnTargetActive: { color: '#cfe9dc' },
   towerBtnTextDisabled: { color: '#3a4858' },
 
   overlay: {
