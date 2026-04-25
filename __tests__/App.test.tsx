@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
 import App from '../App';
-import { STARTING_GOLD, STARTING_LIVES, TOTAL_WAVES, TOWER_STATS } from '../components/game/constants';
+import { STARTING_GOLD, STARTING_LIVES, TOWER_STATS } from '../components/game/constants';
 
 // PixiGameRenderer uses expo-gl / pixi.js (WebGL) which is unavailable in Jest.
 // The manual mock at components/__mocks__/PixiGameRenderer.tsx replaces it with
@@ -109,7 +109,7 @@ describe('GameScreen HUD', () => {
   });
 
   it('shows wave counter in the HUD', () => {
-    expect(screen.getByText(`1/${TOTAL_WAVES}`)).toBeTruthy();
+    expect(screen.getByText('1/3')).toBeTruthy();
   });
 });
 
@@ -130,24 +130,25 @@ describe('GameScreen tower building', () => {
     expect(screen.queryByText('Magic')).toBeNull();
   });
 
-  it('keeps the tower picker visible after selecting a tower', () => {
+  it('selecting a tower shows the Cancel button', () => {
     fireEvent.press(screen.getByText('Archer'));
+    expect(screen.getByLabelText('Cancel build')).toBeTruthy();
+  });
+
+  it('cancelling build mode restores the tower picker', () => {
+    fireEvent.press(screen.getByText('Archer'));
+    fireEvent.press(screen.getByLabelText('Cancel build'));
     expect(screen.getByText('Archer')).toBeTruthy();
-    expect(screen.queryByLabelText('Cancel build')).toBeNull();
-    expect(screen.getByTestId('tower-build-archer').props.accessibilityState.selected).toBe(true);
+    expect(screen.queryByText('Cannon')).toBeNull();
   });
 
-  it('marks the selected tower as active', () => {
-    fireEvent.press(screen.getByText('Archer'));
-    expect(screen.getByTestId('tower-build-archer').props.accessibilityState.selected).toBe(true);
-  });
-
-  it('placing an archer tower deducts archer cost and keeps the same tower active', () => {
+  it('placing an archer tower deducts archer cost and exits build mode', () => {
     fireEvent.press(screen.getByText('Archer'));
     // Row 0, col 0 is a valid build cell (not PATH_ROW)
     fireEvent.press(screen.getByLabelText('Cell row 0 col 0'));
     expect(screen.getByText(String(STARTING_GOLD - TOWER_STATS.archer.cost))).toBeTruthy();
-    expect(screen.getByTestId('tower-build-archer').props.accessibilityState.selected).toBe(true);
+    // Build mode is cancelled automatically after placement
+    expect(screen.getByText('Archer')).toBeTruthy();
   });
 });
 
@@ -162,8 +163,7 @@ describe('Start menu progression panel', () => {
   });
 
   it('shows meta coins and level selector', () => {
-    expect(screen.getByText('Gold')).toBeTruthy();
-    expect(screen.getAllByText('0').length).toBeGreaterThan(0);
+    expect(screen.getByText('0 ')).toBeTruthy();
     expect(screen.getByText('Level')).toBeTruthy();
   });
 });

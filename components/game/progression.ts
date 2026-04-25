@@ -15,11 +15,6 @@ export interface TowerUpgradeState {
 export interface MetaProfile {
   coins: number;
   highestLevelUnlocked: number;
-  totalRuns: number;
-  wins: number;
-  winStreak: number;
-  bestWinStreak: number;
-  firstClearLevels: number[];
   unlockedTowers: Record<TowerType, boolean>;
   upgrades: Record<TowerType, TowerUpgradeState>;
 }
@@ -40,11 +35,6 @@ const DEFAULT_TOWER_UPGRADE: TowerUpgradeState = {
 export const DEFAULT_META_PROFILE: MetaProfile = {
   coins: 0,
   highestLevelUnlocked: 1,
-  totalRuns: 0,
-  wins: 0,
-  winStreak: 0,
-  bestWinStreak: 0,
-  firstClearLevels: [],
   unlockedTowers: {
     archer: true,
     cannon: false,
@@ -77,11 +67,6 @@ export function loadMetaProfile(): Promise<MetaProfile> {
       return {
         ...DEFAULT_META_PROFILE,
         ...parsed,
-        firstClearLevels: Array.isArray(parsed.firstClearLevels)
-          ? parsed.firstClearLevels
-              .map((value) => Number(value))
-              .filter((value) => Number.isFinite(value) && value >= 1)
-          : DEFAULT_META_PROFILE.firstClearLevels,
         unlockedTowers: {
           ...DEFAULT_META_PROFILE.unlockedTowers,
           ...(parsed.unlockedTowers ?? {}),
@@ -176,39 +161,23 @@ export function upgradeTowerStat(
 }
 
 export function calculateRunReward(result: RunResult): number {
-  const killReward = result.enemiesKilled * 5;
-  const waveReward = result.wavesSurvived * 32;
-  const levelReward = result.level * 24;
-  const outcomeBonus = result.won ? 170 + result.level * 14 : 35;
+  const killReward = result.enemiesKilled * 4;
+  const waveReward = result.wavesSurvived * 25;
+  const levelReward = result.level * 20;
+  const outcomeBonus = result.won ? 140 + result.level * 12 : 30;
   return killReward + waveReward + levelReward + outcomeBonus;
 }
 
 export function applyRunResult(profile: MetaProfile, result: RunResult): MetaProfile {
-  const baseReward = calculateRunReward(result);
+  const reward = calculateRunReward(result);
   const unlockedNext = result.won && result.level >= profile.highestLevelUnlocked
     ? profile.highestLevelUnlocked + 1
     : profile.highestLevelUnlocked;
-
-  const won = result.won;
-  const nextWinStreak = won ? profile.winStreak + 1 : 0;
-  const streakBonus = won ? Math.min(180, Math.max(0, nextWinStreak - 1) * 22) : 0;
-  const alreadyFirstCleared = profile.firstClearLevels.includes(result.level);
-  const firstClearBonus = won && !alreadyFirstCleared
-    ? 130 + result.level * 36
-    : 0;
-  const reward = baseReward + streakBonus + firstClearBonus;
 
   return {
     ...profile,
     coins: profile.coins + reward,
     highestLevelUnlocked: unlockedNext,
-    totalRuns: profile.totalRuns + 1,
-    wins: profile.wins + (won ? 1 : 0),
-    winStreak: nextWinStreak,
-    bestWinStreak: Math.max(profile.bestWinStreak, nextWinStreak),
-    firstClearLevels: won && !alreadyFirstCleared
-      ? [...profile.firstClearLevels, result.level].sort((a, b) => a - b)
-      : profile.firstClearLevels,
   };
 }
 

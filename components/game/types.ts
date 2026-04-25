@@ -11,6 +11,9 @@ export type EnemyType = GroundEnemyType | AirEnemyType;
 /** Visual sprite variant for a tower, assigned at placement time. */
 export type TowerType = 'archer' | 'cannon' | 'magic';
 
+/** Temporary per-tower upgrade types that only last for the current run. */
+export type InLevelUpgradeType = 'damage_boost' | 'range_boost' | 'speed_boost';
+
 /** Visual variant for static map obstacles. */
 export type ObstacleVariant = 'rockA' | 'rockB' | 'rockC';
 

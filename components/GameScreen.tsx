@@ -4,9 +4,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLanguage } from './i18n/LanguageContext';
 import PixiGameRenderer, { type RenderDiagnostics } from './PixiGameRenderer';
 import PauseMenuScreen from './PauseMenuScreen';
-import { type TowerStats } from './game/constants';
-import { createInitialState, getLevelDifficulty, placeTower, tickGame } from './game/logic';
-import type { GameState, GameStatus, TowerType } from './game/types';
+import { IN_LEVEL_UPGRADE_CONFIG, type TowerStats } from './game/constants';
+import {
+  createInitialState,
+  getInLevelBoostedStats,
+  getLevelDifficulty,
+  placeTower,
+  purchaseInLevelUpgrade,
+  tickGame,
+} from './game/logic';
+import type { GameState, GameStatus, InLevelUpgradeType, TowerType } from './game/types';
 
 interface Props {
   onQuitToMenu: () => void;
@@ -37,7 +44,7 @@ export default function GameScreen({
    * Bumped whenever in-level upgrades change so the panel re-renders
    * (gameRef is a ref and doesn't trigger re-renders by itself).
    */
-  const [hudUpgradesVersion, setHudUpgradesVersion] = useState(0);
+  const [, setHudUpgradesVersion] = useState(0);
 
   // ── Shared game state ──────────────────────────────────────────────────────
   // Game state lives in a ref so the PixiJS ticker can read it without causing

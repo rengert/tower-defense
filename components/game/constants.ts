@@ -1,4 +1,4 @@
-import type { EnemyCategory, TowerType } from './types';
+import type { EnemyCategory, InLevelUpgradeType, TowerType } from './types';
 
 export const GRID_ROWS = 10;
 export const GRID_COLS = 12;
