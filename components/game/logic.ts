@@ -113,6 +113,91 @@ function buildBlockedSet(towers: Tower[], obstacles: Obstacle[]): Set<string> {
   return blocked;
 }
 
+function clampGridIndex(value: number, maxExclusive: number): number {
+  return Math.max(0, Math.min(maxExclusive - 1, Math.floor(value)));
+}
+
+function segmentIntersectsCell(
+  fromCol: number,
+  fromRow: number,
+  toCol: number,
+  toRow: number,
+  obstacle: Obstacle
+): boolean {
+  const left = obstacle.col;
+  const right = obstacle.col + 1;
+  const top = obstacle.row;
+  const bottom = obstacle.row + 1;
+  const deltaX = toCol - fromCol;
+  const deltaY = toRow - fromRow;
+
+  let tMin = 0;
+  let tMax = 1;
+
+  const clips: Array<[number, number]> = [
+    [-deltaX, fromCol - left],
+    [deltaX, right - fromCol],
+    [-deltaY, fromRow - top],
+    [deltaY, bottom - fromRow],
+  ];
+
+  for (const [p, q] of clips) {
+    if (p === 0) {
+      if (q < 0) {
+        return false;
+      }
+      continue;
+    }
+
+    const ratio = q / p;
+    if (p < 0) {
+      if (ratio > tMax) {
+        return false;
+      }
+      tMin = Math.max(tMin, ratio);
+    } else {
+      if (ratio < tMin) {
+        return false;
+      }
+      tMax = Math.min(tMax, ratio);
+    }
+  }
+
+  return tMin <= tMax;
+}
+
+/**
+ * Returns whether the tower has an unobstructed shot to the enemy.
+ * Obstacles block the line segment between both cell centers, except when the
+ * obstacle is on the enemy's current cell.
+ */
+export function hasLineOfSight(tower: Tower, enemy: Enemy, obstacles: Obstacle[]): boolean {
+  if (obstacles.length === 0) {
+    return true;
+  }
+
+  const enemyCategory = enemy.category ?? 'ground';
+  const targetRow = enemy.row ?? (enemyCategory === 'air' ? AIR_ROW : PATH_ROW);
+  const targetCellRow = clampGridIndex(targetRow, GRID_ROWS);
+  const targetCellCol = clampGridIndex(enemy.col, GRID_COLS);
+  const fromCol = tower.col + 0.5;
+  const fromRow = tower.row + 0.5;
+  const toCol = enemy.col + 0.5;
+  const toRow = targetRow + 0.5;
+
+  for (const obstacle of obstacles) {
+    if (obstacle.row === targetCellRow && obstacle.col === targetCellCol) {
+      continue;
+    }
+
+    if (segmentIntersectsCell(fromCol, fromRow, toCol, toRow, obstacle)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 function createSeededRng(seed: number): () => number {
   let state = (seed >>> 0) || 1;
   return () => {
@@ -372,6 +457,7 @@ export function tickGame(
       const dist = Math.sqrt(
         (enemy.col - tower.col) ** 2 + (enemyRow - tower.row) ** 2
       );
+      if (!hasLineOfSight(tower, enemy, obstacles)) continue;
       if (dist <= stats.range && dist < minDist) {
         minDist = dist;
         target = enemy;

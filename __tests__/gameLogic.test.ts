@@ -1,6 +1,7 @@
 import {
   generateObstaclesForLevel,
   findShortestPath,
+  hasLineOfSight,
   canPlaceTower,
   createInitialState,
   placeTower,
@@ -117,6 +118,24 @@ describe('findShortestPath', () => {
       variant: 'rockA' as const,
     }));
     expect(findShortestPath([], obstacles)).toBeNull();
+  });
+});
+
+describe('hasLineOfSight', () => {
+  it('returns false when an obstacle is between tower and target', () => {
+    const tower: Tower = { id: 1, row: PATH_ROW, col: 2, cooldownMs: 0, towerType: 'archer' };
+    const enemy = { id: 1, row: PATH_ROW, col: 4, health: 60, maxHealth: 60, category: 'ground' as const };
+    const obstacles = [{ id: 1, row: PATH_ROW, col: 3, variant: 'rockA' as const }];
+
+    expect(hasLineOfSight(tower, enemy, obstacles)).toBe(false);
+  });
+
+  it('returns true when the target itself is on the obstacle cell', () => {
+    const tower: Tower = { id: 1, row: AIR_ROW + 1, col: 2, cooldownMs: 0, towerType: 'archer' };
+    const enemy = { id: 1, row: AIR_ROW, col: 4, health: 60, maxHealth: 60, category: 'air' as const };
+    const obstacles = [{ id: 1, row: AIR_ROW, col: 4, variant: 'rockB' as const }];
+
+    expect(hasLineOfSight(tower, enemy, obstacles)).toBe(true);
   });
 });
 
@@ -276,6 +295,34 @@ describe('tickGame', () => {
     const next = tickGame(state);
     expect(next.enemies.find((enemy) => enemy.id === 1)?.health).toBe(60);
     expect(next.enemies.find((enemy) => enemy.id === 2)?.health).toBe(60 - TOWER_STATS.magic.damage);
+  });
+
+  it('tower does not fire through an obstacle', () => {
+    const state: GameState = {
+      ...createInitialState(),
+      obstacles: [{ id: 1, row: PATH_ROW, col: 3, variant: 'rockA' }],
+      enemies: [{ id: 1, col: 4, row: PATH_ROW, health: 60, maxHealth: 60, category: 'ground', enemyType: 'orc' }],
+      towers: [{ id: 1, row: PATH_ROW, col: 2, cooldownMs: 0, towerType: 'archer' }],
+      enemiesSpawned: ENEMIES_PER_WAVE,
+    };
+
+    const next = tickGame(state, 0);
+    expect(next.enemies[0].health).toBe(60);
+    expect(next.projectiles).toHaveLength(0);
+  });
+
+  it('tower can hit an air enemy directly on an obstacle cell', () => {
+    const state: GameState = {
+      ...createInitialState(),
+      obstacles: [{ id: 1, row: AIR_ROW, col: 4, variant: 'rockB' }],
+      enemies: [{ id: 1, col: 4, row: AIR_ROW, health: 60, maxHealth: 60, category: 'air', enemyType: 'harpy' }],
+      towers: [{ id: 1, row: AIR_ROW + 1, col: 2, cooldownMs: 0, towerType: 'archer' }],
+      enemiesSpawned: ENEMIES_PER_WAVE,
+    };
+
+    const next = tickGame(state, 0);
+    expect(next.enemies[0].health).toBe(60 - TOWER_STATS.archer.damage);
+    expect(next.projectiles.length).toBeGreaterThan(0);
   });
 
   it('spawns air enemies in later waves on the air row', () => {
