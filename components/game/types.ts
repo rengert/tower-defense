@@ -38,6 +38,13 @@ export interface Enemy {
   category?: EnemyCategory;
   /** Total distance traveled along the current path in cells (ground enemies only). */
   pathProgress?: number;
+  /** Original ground spawn row; used to keep pathing stable per enemy. */
+  spawnRow?: number;
+}
+
+export interface SpawnMarker {
+  row: number;
+  category: EnemyCategory;
 }
 
 export interface Tower {
@@ -68,6 +75,7 @@ export interface GameState {
   enemies: Enemy[];
   towers: Tower[];
   obstacles: Obstacle[];
+  spawnMarkers: SpawnMarker[];
   projectiles: Projectile[];
   gold: number;
   lives: number;

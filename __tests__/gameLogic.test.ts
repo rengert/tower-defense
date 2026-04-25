@@ -47,6 +47,15 @@ describe('createInitialState', () => {
     expect(state.obstacles.length).toBeGreaterThan(0);
     expect(findShortestPath([], state.obstacles)).not.toBeNull();
   });
+
+  it('exposes at most one spawn marker per enemy category', () => {
+    const state = createInitialState(1);
+    const groundCount = state.spawnMarkers.filter((marker) => marker.category === 'ground').length;
+    const airCount = state.spawnMarkers.filter((marker) => marker.category === 'air').length;
+    expect(groundCount).toBeLessThanOrEqual(1);
+    expect(airCount).toBeLessThanOrEqual(1);
+    expect(state.spawnMarkers.some((marker) => marker.category === 'ground')).toBe(true);
+  });
 });
 
 describe('generateObstaclesForLevel', () => {
@@ -159,6 +168,66 @@ describe('tickGame', () => {
     const next = tickGame(state);
     expect(next.enemies).toHaveLength(1);
     expect(next.enemiesSpawned).toBe(1);
+  });
+
+  it('varies ground enemy spawn rows over multiple spawns', () => {
+    let state: GameState = {
+      ...createInitialState(),
+      obstacles: [],
+      spawnMarkers: [],
+      enemies: [],
+      enemiesSpawned: 0,
+      elapsedMs: 0,
+      lastSpawnMs: -SPAWN_INTERVAL_MS,
+      wave: 1,
+    };
+
+    const spawnedRows = new Set<number>();
+    for (let index = 0; index < 3; index++) {
+      state = { ...state, elapsedMs: state.elapsedMs + SPAWN_INTERVAL_MS };
+      state = tickGame(state, 0);
+      const latest = state.enemies[state.enemies.length - 1];
+      spawnedRows.add(latest.spawnRow ?? PATH_ROW);
+    }
+
+    expect(spawnedRows.size).toBeGreaterThan(1);
+  });
+
+  it('shows only the next marker per category and hides a spawn point after enemy becomes visible', () => {
+    const hiddenGroundState: GameState = {
+      ...createInitialState(),
+      obstacles: [],
+      spawnMarkers: [],
+      wave: 2,
+      enemiesSpawned: 1,
+      elapsedMs: 0,
+      lastSpawnMs: 0,
+      enemies: [{
+        id: 1,
+        col: -0.2,
+        row: PATH_ROW + 2,
+        spawnRow: PATH_ROW + 2,
+        health: 60,
+        maxHealth: 60,
+        category: 'ground',
+        enemyType: 'orc',
+      }],
+    };
+
+    const hiddenNext = tickGame(hiddenGroundState, 0);
+    const groundHiddenMarker = hiddenNext.spawnMarkers.find((marker) => marker.category === 'ground');
+    expect(groundHiddenMarker?.row).toBe(PATH_ROW + 2);
+    expect(hiddenNext.spawnMarkers.filter((marker) => marker.category === 'ground')).toHaveLength(1);
+    expect(hiddenNext.spawnMarkers.filter((marker) => marker.category === 'air')).toHaveLength(1);
+
+    const visibleGroundState: GameState = {
+      ...hiddenGroundState,
+      enemies: [{ ...hiddenGroundState.enemies[0], col: 0.2 }],
+    };
+    const visibleNext = tickGame(visibleGroundState, 0);
+    const groundVisibleMarker = visibleNext.spawnMarkers.find((marker) => marker.category === 'ground');
+    expect(groundVisibleMarker).toBeTruthy();
+    expect(groundVisibleMarker?.row).not.toBe(PATH_ROW + 2);
   });
 
   it('does not spawn more enemies than ENEMIES_PER_WAVE per wave', () => {
@@ -392,8 +461,21 @@ describe('canPlaceTower', () => {
   });
 
   it('returns false when tower would block the only remaining path', () => {
-    // The BFS start cell (PATH_ROW, 0) is the gateway – blocking it cuts all routes
-    expect(canPlaceTower(createInitialState(), PATH_ROW, 0)).toBe(false);
+    const chokeTowers: Tower[] = Array.from({ length: GRID_ROWS }, (_, rowIndex) => rowIndex)
+      .filter((rowIndex) => rowIndex !== PATH_ROW)
+      .map((rowIndex, index) => ({
+        id: index + 1,
+        row: rowIndex,
+        col: 1,
+        cooldownMs: 0,
+      }));
+    const state: GameState = {
+      ...createInitialState(),
+      towers: chokeTowers,
+    };
+
+    // Closing the last open cell in column 1 blocks every possible route.
+    expect(canPlaceTower(state, PATH_ROW, 1)).toBe(false);
   });
 
   it('returns false when gold is insufficient', () => {
@@ -433,9 +515,20 @@ describe('placeTower', () => {
   });
 
   it('returns the same state when placement is invalid', () => {
-    const state = createInitialState();
-    // PATH_ROW,0 blocks the BFS start – no path can exist, so placement is rejected
-    expect(placeTower(state, PATH_ROW, 0)).toBe(state);
+    const chokeTowers: Tower[] = Array.from({ length: GRID_ROWS }, (_, rowIndex) => rowIndex)
+      .filter((rowIndex) => rowIndex !== PATH_ROW)
+      .map((rowIndex, index) => ({
+        id: index + 1,
+        row: rowIndex,
+        col: 1,
+        cooldownMs: 0,
+      }));
+    const state: GameState = {
+      ...createInitialState(),
+      towers: chokeTowers,
+      nextTowerId: chokeTowers.length + 1,
+    };
+    expect(placeTower(state, PATH_ROW, 1)).toBe(state);
   });
 
   it('increments nextTowerId after placement', () => {

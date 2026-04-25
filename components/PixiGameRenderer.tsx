@@ -97,6 +97,8 @@ const C = {
   airHpFull: '#38bdf8',  // sky-blue HP for air enemies
   airHpLow: '#7dd3fc',
   obstacleCell: '#1f2633',
+  spawnGround: '#f59e0b',
+  spawnAir: '#38bdf8',
 };
 
 export default function PixiGameRenderer({
@@ -280,6 +282,28 @@ export default function PixiGameRenderer({
             ]}
           />
         ))}
+
+        {state.spawnMarkers.map((marker, index) => {
+          const size = Math.max(3, Math.min(dims.cellW, dims.cellH) * 0.12);
+          const y = dims.offsetY + marker.row * dims.cellH + dims.cellH / 2 - size / 2;
+          const x = dims.offsetX + Math.max(1, dims.cellW * 0.08);
+          return (
+            <View
+              key={`spawn-marker-${marker.category}-${marker.row}-${index}`}
+              pointerEvents="none"
+              style={[
+                styles.spawnMarker,
+                {
+                  left: x,
+                  top: y,
+                  width: size,
+                  height: size,
+                  backgroundColor: marker.category === 'air' ? C.spawnAir : C.spawnGround,
+                },
+              ]}
+            />
+          );
+        })}
 
         {state.towers.map((tower) => {
           const padding = dims.cellH * 0.05;
@@ -542,6 +566,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     borderRadius: 999,
     opacity: 0.9,
+  },
+  spawnMarker: {
+    position: 'absolute',
+    borderRadius: 999,
+    opacity: 0.95,
   },
   projectile: {
     position: 'absolute',
