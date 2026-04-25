@@ -92,4 +92,10 @@ export interface GameState {
   nextEnemyId: number;
   nextTowerId: number;
   nextProjectileId: number;
+  /**
+   * Temporary in-level upgrades per tower (keyed by tower ID).
+   * Each entry maps an InLevelUpgradeType to the number of purchased stacks.
+   * Cleared when the run ends or a new game starts.
+   */
+  inLevelUpgrades: Record<number, Partial<Record<InLevelUpgradeType, number>>>;
 }

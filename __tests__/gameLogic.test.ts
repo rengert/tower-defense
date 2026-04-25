@@ -4,7 +4,9 @@ import {
   hasLineOfSight,
   canPlaceTower,
   createInitialState,
+  getInLevelBoostedStats,
   placeTower,
+  purchaseInLevelUpgrade,
   tickGame,
   getLevelDifficulty,
 } from '../components/game/logic';
@@ -14,6 +16,7 @@ import {
   ENEMIES_PER_WAVE,
   GRID_COLS,
   GRID_ROWS,
+  IN_LEVEL_UPGRADE_CONFIG,
   PATH_ROW,
   SPAWN_INTERVAL_MS,
   STARTING_GOLD,
@@ -544,3 +547,118 @@ describe('placeTower', () => {
     expect(next.gold).toBe(STARTING_GOLD - TOWER_STATS.magic.cost);
   });
 });
+
+// ── In-level tower upgrades ───────────────────────────────────────────────────
+
+describe('getInLevelBoostedStats', () => {
+  it('returns base stats unchanged when no upgrades are present', () => {
+    const base = TOWER_STATS.archer;
+    expect(getInLevelBoostedStats(base, {})).toEqual(base);
+  });
+
+  it('increases damage by damageBonus per damage_boost stack', () => {
+    const base = TOWER_STATS.archer;
+    const boosted = getInLevelBoostedStats(base, { damage_boost: 2 });
+    expect(boosted.damage).toBe(
+      base.damage + 2 * IN_LEVEL_UPGRADE_CONFIG.damage_boost.damageBonus
+    );
+  });
+
+  it('increases range by rangeBonus per range_boost stack', () => {
+    const base = TOWER_STATS.cannon;
+    const boosted = getInLevelBoostedStats(base, { range_boost: 1 });
+    expect(boosted.range).toBeCloseTo(
+      base.range + IN_LEVEL_UPGRADE_CONFIG.range_boost.rangeBonus
+    );
+  });
+
+  it('reduces cooldownMs by cooldownReduction per speed_boost stack', () => {
+    const base = TOWER_STATS.archer;
+    const boosted = getInLevelBoostedStats(base, { speed_boost: 2 });
+    expect(boosted.cooldownMs).toBe(
+      Math.max(200, base.cooldownMs - 2 * IN_LEVEL_UPGRADE_CONFIG.speed_boost.cooldownReduction)
+    );
+  });
+
+  it('clamps cooldownMs to 200 ms minimum', () => {
+    const base = { ...TOWER_STATS.archer, cooldownMs: 400 };
+    // 3 stacks @ 150 ms each = 450 ms reduction → would go below 0
+    const boosted = getInLevelBoostedStats(base, { speed_boost: 3 });
+    expect(boosted.cooldownMs).toBe(200);
+  });
+});
+
+describe('purchaseInLevelUpgrade', () => {
+  it('deducts gold and records the first stack', () => {
+    const state = placeTower(createInitialState(), PATH_ROW - 1, 5, 'archer');
+    const towerId = state.towers[0].id;
+    const next = purchaseInLevelUpgrade(state, towerId, 'damage_boost');
+    expect(next.gold).toBe(state.gold - IN_LEVEL_UPGRADE_CONFIG.damage_boost.cost);
+    expect(next.inLevelUpgrades[towerId]?.damage_boost).toBe(1);
+  });
+
+  it('accumulates multiple stacks of the same upgrade', () => {
+    let state = placeTower(
+      { ...createInitialState(), gold: 9999 },
+      PATH_ROW - 1,
+      5,
+      'archer'
+    );
+    const towerId = state.towers[0].id;
+    state = purchaseInLevelUpgrade(state, towerId, 'range_boost');
+    state = purchaseInLevelUpgrade(state, towerId, 'range_boost');
+    expect(state.inLevelUpgrades[towerId]?.range_boost).toBe(2);
+  });
+
+  it('returns the same state unchanged when gold is insufficient', () => {
+    const state: GameState = {
+      ...createInitialState(),
+      gold: 0,
+      towers: [{ id: 1, row: 3, col: 5, cooldownMs: 0, towerType: 'archer' }],
+    };
+    expect(purchaseInLevelUpgrade(state, 1, 'damage_boost')).toBe(state);
+  });
+
+  it('is capped at maxStacks and does not deduct more gold', () => {
+    const maxStacks = IN_LEVEL_UPGRADE_CONFIG.damage_boost.maxStacks;
+    let state = placeTower(
+      { ...createInitialState(), gold: 9999 },
+      PATH_ROW - 1,
+      5,
+      'archer'
+    );
+    const towerId = state.towers[0].id;
+    for (let i = 0; i < maxStacks + 2; i++) {
+      state = purchaseInLevelUpgrade(state, towerId, 'damage_boost');
+    }
+    expect(state.inLevelUpgrades[towerId]?.damage_boost).toBe(maxStacks);
+    const expectedGoldSpent = maxStacks * IN_LEVEL_UPGRADE_CONFIG.damage_boost.cost;
+    expect(state.gold).toBe(9999 - TOWER_STATS.archer.cost - expectedGoldSpent);
+  });
+
+  it('returns the same state unchanged when tower id is not found', () => {
+    const state = createInitialState();
+    expect(purchaseInLevelUpgrade(state, 999, 'speed_boost')).toBe(state);
+  });
+
+  it('boosted tower deals more damage in tickGame than an unboosted tower', () => {
+    const baseState: GameState = {
+      ...createInitialState(),
+      enemies: [{ id: 1, col: 5, row: PATH_ROW, health: 200, maxHealth: 200, category: 'ground' }],
+      towers: [{ id: 1, row: PATH_ROW - 1, col: 5, cooldownMs: 0, towerType: 'archer' }],
+      enemiesSpawned: ENEMIES_PER_WAVE,
+    };
+    const boostedState: GameState = {
+      ...baseState,
+      inLevelUpgrades: { 1: { damage_boost: 3 } },
+    };
+
+    const afterUnboosted = tickGame(baseState);
+    const afterBoosted = tickGame(boostedState);
+
+    const hpUnboosted = afterUnboosted.enemies[0]?.health ?? 200;
+    const hpBoosted = afterBoosted.enemies[0]?.health ?? 200;
+    expect(hpBoosted).toBeLessThan(hpUnboosted);
+  });
+});
+

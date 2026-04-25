@@ -8,6 +8,7 @@ import {
   ENEMIES_PER_WAVE,
   GRID_COLS,
   GRID_ROWS,
+  IN_LEVEL_UPGRADE_CONFIG,
   PATH_ROW,
   SPAWN_INTERVAL_MS,
   STARTING_GOLD,
@@ -24,6 +25,7 @@ import type {
   EnemyType,
   Enemy,
   GameState,
+  InLevelUpgradeType,
   Obstacle,
   ObstacleVariant,
   SpawnMarker,
@@ -64,6 +66,25 @@ function resolveTowerStats(
   towerStatsOverride?: Record<TowerType, TowerStats>
 ): Record<TowerType, TowerStats> {
   return towerStatsOverride ?? TOWER_STATS;
+}
+
+/**
+ * Returns effective tower stats after applying temporary in-level upgrade stacks.
+ * Bonuses are additive and capped to prevent cooldownMs from going below 200 ms.
+ */
+export function getInLevelBoostedStats(
+  base: TowerStats,
+  upgrades: Partial<Record<InLevelUpgradeType, number>> = {}
+): TowerStats {
+  const damageStacks = upgrades.damage_boost ?? 0;
+  const rangeStacks = upgrades.range_boost ?? 0;
+  const speedStacks = upgrades.speed_boost ?? 0;
+  return {
+    ...base,
+    damage: base.damage + damageStacks * IN_LEVEL_UPGRADE_CONFIG.damage_boost.damageBonus,
+    range: base.range + rangeStacks * IN_LEVEL_UPGRADE_CONFIG.range_boost.rangeBonus,
+    cooldownMs: Math.max(200, base.cooldownMs - speedStacks * IN_LEVEL_UPGRADE_CONFIG.speed_boost.cooldownReduction),
+  };
 }
 
 // ── Wave configuration ──────────────────────────────────────────────────────
@@ -459,6 +480,7 @@ export function createInitialState(level: number = 1): GameState {
     nextTowerId: 1,
     nextProjectileId: 1,
     level: safeLevel,
+    inLevelUpgrades: {},
   };
 }
 
@@ -550,7 +572,10 @@ export function tickGame(
     const remainingCooldown = tower.cooldownMs - dtMs;
     if (remainingCooldown > 0) return { ...tower, cooldownMs: remainingCooldown };
 
-    const stats = towerStats[tower.towerType ?? 'archer'];
+    const stats = getInLevelBoostedStats(
+      towerStats[tower.towerType ?? 'archer'],
+      prev.inLevelUpgrades[tower.id]
+    );
 
     let target: Enemy | null = null;
     let minDist = Infinity;
@@ -628,6 +653,7 @@ export function tickGame(
     enemies, towers, obstacles, spawnMarkers, projectiles, gold, lives, wave, status,
     enemiesSpawned, enemiesKilled, elapsedMs, lastSpawnMs, nextEnemyId, nextTowerId, nextProjectileId,
     level: prev.level,
+    inLevelUpgrades: prev.inLevelUpgrades,
   };
 }
 
@@ -678,3 +704,34 @@ export function placeTower(
     nextTowerId: state.nextTowerId + 1,
   };
 }
+
+/**
+ * Purchases a temporary in-level upgrade for a specific tower.
+ * Returns the same state if the tower is not found, the gold is insufficient,
+ * or the upgrade is already at its maximum stack count.
+ */
+export function purchaseInLevelUpgrade(
+  state: GameState,
+  towerId: number,
+  upgradeType: InLevelUpgradeType
+): GameState {
+  const tower = state.towers.find((t) => t.id === towerId);
+  if (!tower) return state;
+  const config = IN_LEVEL_UPGRADE_CONFIG[upgradeType];
+  if (state.gold < config.cost) return state;
+  const currentUpgrades = state.inLevelUpgrades[towerId] ?? {};
+  const currentStacks = currentUpgrades[upgradeType] ?? 0;
+  if (currentStacks >= config.maxStacks) return state;
+  return {
+    ...state,
+    gold: state.gold - config.cost,
+    inLevelUpgrades: {
+      ...state.inLevelUpgrades,
+      [towerId]: {
+        ...currentUpgrades,
+        [upgradeType]: currentStacks + 1,
+      },
+    },
+  };
+}
+

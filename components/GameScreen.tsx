@@ -31,6 +31,13 @@ export default function GameScreen({
   const { t } = useLanguage();
   const [paused, setPaused] = useState(false);
   const [buildTowerType, setBuildTowerType] = useState<TowerType | null>(null);
+  /** Tower selected for in-level upgrades. Null = no selection. */
+  const [selectedTowerId, setSelectedTowerId] = useState<number | null>(null);
+  /**
+   * Bumped whenever in-level upgrades change so the panel re-renders
+   * (gameRef is a ref and doesn't trigger re-renders by itself).
+   */
+  const [hudUpgradesVersion, setHudUpgradesVersion] = useState(0);
 
   // ── Shared game state ──────────────────────────────────────────────────────
   // Game state lives in a ref so the PixiJS ticker can read it without causing
@@ -79,7 +86,22 @@ export default function GameScreen({
   // ── Tower placement ───────────────────────────────────────────────────────
   const handleCellPress = useCallback(
     (row: number, col: number) => {
-      if (!buildTowerType || gameRef.current.status !== 'playing') return;
+      if (gameRef.current.status !== 'playing') return;
+
+      // If the tapped cell has an existing tower → select it for upgrading.
+      const existingTower = gameRef.current.towers.find(
+        (t) => t.row === row && t.col === col
+      );
+      if (existingTower) {
+        setSelectedTowerId(existingTower.id);
+        setBuildTowerType(null);
+        return;
+      }
+
+      // Tapping an empty cell dismisses the upgrade panel.
+      setSelectedTowerId(null);
+
+      if (!buildTowerType) return;
       const prev = gameRef.current;
       const next = placeTower(prev, row, col, buildTowerType, effectiveTowerStats);
       if (next !== prev) {
@@ -97,12 +119,15 @@ export default function GameScreen({
     gameRef.current = fresh;
     reportedEndRef.current = false;
     setBuildTowerType(null);
+    setSelectedTowerId(null);
+    setHudUpgradesVersion(0);
     syncHudState(prev, fresh);
   }, [startLevel, syncHudState]);
 
   useEffect(() => {
     if ((gameStatus !== 'won' && gameStatus !== 'lost') || reportedEndRef.current) return;
     reportedEndRef.current = true;
+    setSelectedTowerId(null);
     onRunFinished({
       won: gameStatus === 'won',
       level: startLevel,
@@ -112,6 +137,21 @@ export default function GameScreen({
   }, [gameStatus, hudWave, onRunFinished, startLevel]);
 
   const isPlaying = gameStatus === 'playing';
+
+  // ── In-level tower upgrade ────────────────────────────────────────────────
+  const handleUpgradePurchase = useCallback(
+    (upgradeType: InLevelUpgradeType) => {
+      if (selectedTowerId === null) return;
+      const prev = gameRef.current;
+      const next = purchaseInLevelUpgrade(prev, selectedTowerId, upgradeType);
+      if (next !== prev) {
+        gameRef.current = next;
+        syncHudState(prev, next);
+        setHudUpgradesVersion((v) => v + 1);
+      }
+    },
+    [selectedTowerId, syncHudState]
+  );
 
   return (
     <View style={styles.container}>
@@ -166,76 +206,182 @@ export default function GameScreen({
         </View>
       )}
 
-      {/* ── Footer – Build Controls ──────────────────────────────────────── */}
+      {/* ── Footer – Build Controls / Tower Upgrades ─────────────────── */}
       <View style={styles.footer}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.towerRow}
-        >
-          {towerChoices.map((type) => {
-            const stats = effectiveTowerStats[type];
-            const canAfford = hudGold >= stats.cost;
-            const isSelected = buildTowerType === type;
-            const targetLabel =
-              stats.targets.length === 2
-                ? t.towerTargetAll
-                : stats.targets[0] === 'ground'
-                ? t.towerTargetGround
-                : t.towerTargetAir;
-            const name =
-              type === 'archer'
+        {selectedTowerId !== null && isPlaying ? (
+          /* ── Upgrade Panel ──────────────────────────────────────────── */
+          (() => {
+            const tower = gameRef.current.towers.find((t) => t.id === selectedTowerId);
+            if (!tower) return null;
+            const towerType = tower.towerType ?? 'archer';
+            const baseStats = effectiveTowerStats[towerType];
+            const upgrades = gameRef.current.inLevelUpgrades[selectedTowerId] ?? {};
+            const boosted = getInLevelBoostedStats(baseStats, upgrades);
+            const towerEmoji = baseStats.emoji;
+            const towerName =
+              towerType === 'archer'
                 ? t.towerArcherName
-                : type === 'cannon'
+                : towerType === 'cannon'
                 ? t.towerCannonName
                 : t.towerMagicName;
+            const upgradeTypes: InLevelUpgradeType[] = [
+              'damage_boost',
+              'range_boost',
+              'speed_boost',
+            ];
             return (
-              <TouchableOpacity
-                key={type}
-                style={[
-                  styles.towerBtn,
-                  isSelected && styles.towerBtnActive,
-                  !canAfford && styles.towerBtnDisabled,
-                ]}
-                onPress={() => canAfford && setBuildTowerType(type)}
-                disabled={!canAfford}
-                accessibilityRole="button"
-                accessibilityLabel={`${name} ${stats.cost} Gold ${targetLabel}`}
-                accessibilityState={{ disabled: !canAfford, selected: isSelected }}
-                testID={`tower-build-${type}`}
-              >
-                {isSelected && <View style={styles.towerBtnActiveDot} />}
-                <Text style={styles.towerBtnEmoji}>{stats.emoji}</Text>
-                <Text
-                  style={[
-                    styles.towerBtnName,
-                    isSelected && styles.towerBtnNameActive,
-                    !canAfford && styles.towerBtnTextDisabled,
-                  ]}
-                >
-                  {name}
-                </Text>
-                <Text
-                  style={[
-                    styles.towerBtnCost,
-                    isSelected && styles.towerBtnCostActive,
-                    !canAfford && styles.towerBtnTextDisabled,
-                  ]}
-                >
-                  {stats.cost} 💰
-                </Text>
-                <Text
-                  style={[
-                    styles.towerBtnTarget,
-                    isSelected && styles.towerBtnTargetActive,
-                  ]}
-                >
-                  {targetLabel}
-                </Text>
-              </TouchableOpacity>
+              <View>
+                {/* Panel header */}
+                <View style={styles.upgradePanelHeader}>
+                  <Text style={styles.upgradePanelTitle}>
+                    {towerEmoji} {towerName} — {t.towerUpgradeTitle}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setSelectedTowerId(null)}
+                    style={styles.upgradePanelClose}
+                    accessibilityRole="button"
+                    accessibilityLabel={t.towerUpgradeDismissA11y}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={styles.upgradePanelCloseText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Current (boosted) stats row */}
+                <View style={styles.upgradeStatsRow}>
+                  <Text style={styles.upgradeStatChip}>⚔️ {boosted.damage}</Text>
+                  <Text style={styles.upgradeStatChip}>🔭 {boosted.range.toFixed(1)}</Text>
+                  <Text style={styles.upgradeStatChip}>⚡ {(1000 / boosted.cooldownMs).toFixed(1)}/s</Text>
+                </View>
+
+                {/* Upgrade buttons */}
+                <View style={styles.upgradeBtnRow}>
+                  {upgradeTypes.map((type) => {
+                    const cfg = IN_LEVEL_UPGRADE_CONFIG[type];
+                    const stacks = upgrades[type] ?? 0;
+                    const isMaxed = stacks >= cfg.maxStacks;
+                    const canAfford = hudGold >= cfg.cost;
+                    const disabled = isMaxed || !canAfford;
+                    return (
+                      <TouchableOpacity
+                        key={type}
+                        style={[
+                          styles.upgradeBtn,
+                          isMaxed && styles.upgradeBtnMaxed,
+                          !isMaxed && !canAfford && styles.upgradeBtnDisabled,
+                        ]}
+                        onPress={() => handleUpgradePurchase(type)}
+                        disabled={disabled}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${cfg.label} ${cfg.cost} Gold ${stacks}/${cfg.maxStacks}`}
+                        accessibilityState={{ disabled }}
+                        testID={`tower-upgrade-${type}`}
+                      >
+                        <Text style={styles.upgradeBtnEmoji}>{cfg.emoji}</Text>
+                        <Text
+                          style={[
+                            styles.upgradeBtnLabel,
+                            isMaxed && styles.upgradeBtnLabelMaxed,
+                            !isMaxed && !canAfford && styles.upgradeBtnLabelDisabled,
+                          ]}
+                        >
+                          {cfg.label}
+                        </Text>
+                        {isMaxed ? (
+                          <Text style={styles.upgradeBtnMaxedBadge}>{t.towerUpgradeMaxed}</Text>
+                        ) : (
+                          <>
+                            <Text
+                              style={[
+                                styles.upgradeBtnCost,
+                                !canAfford && styles.upgradeBtnLabelDisabled,
+                              ]}
+                            >
+                              {cfg.cost} 💰
+                            </Text>
+                            <Text style={styles.upgradeBtnStacks}>
+                              {stacks}/{cfg.maxStacks}
+                            </Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
             );
-          })}
-        </ScrollView>
+          })()
+        ) : (
+          /* ── Tower build buttons ──────────────────────────────────────── */
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.towerRow}
+          >
+            {towerChoices.map((type) => {
+              const stats = effectiveTowerStats[type];
+              const canAfford = hudGold >= stats.cost;
+              const isSelected = buildTowerType === type;
+              const targetLabel =
+                stats.targets.length === 2
+                  ? t.towerTargetAll
+                  : stats.targets[0] === 'ground'
+                  ? t.towerTargetGround
+                  : t.towerTargetAir;
+              const name =
+                type === 'archer'
+                  ? t.towerArcherName
+                  : type === 'cannon'
+                  ? t.towerCannonName
+                  : t.towerMagicName;
+              return (
+                <TouchableOpacity
+                  key={type}
+                  style={[
+                    styles.towerBtn,
+                    isSelected && styles.towerBtnActive,
+                    !canAfford && styles.towerBtnDisabled,
+                  ]}
+                  onPress={() => canAfford && setBuildTowerType(type)}
+                  disabled={!canAfford}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${name} ${stats.cost} Gold ${targetLabel}`}
+                  accessibilityState={{ disabled: !canAfford, selected: isSelected }}
+                  testID={`tower-build-${type}`}
+                >
+                  {isSelected && <View style={styles.towerBtnActiveDot} />}
+                  <Text style={styles.towerBtnEmoji}>{stats.emoji}</Text>
+                  <Text
+                    style={[
+                      styles.towerBtnName,
+                      isSelected && styles.towerBtnNameActive,
+                      !canAfford && styles.towerBtnTextDisabled,
+                    ]}
+                  >
+                    {name}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.towerBtnCost,
+                      isSelected && styles.towerBtnCostActive,
+                      !canAfford && styles.towerBtnTextDisabled,
+                    ]}
+                  >
+                    {stats.cost} 💰
+                  </Text>
+                  <Text
+                    style={[
+                      styles.towerBtnTarget,
+                      isSelected && styles.towerBtnTargetActive,
+                    ]}
+                  >
+                    {targetLabel}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
       </View>
 
       {/* ── Pause Menu ───────────────────────────────────────────────────── */}
@@ -429,6 +575,86 @@ const styles = StyleSheet.create({
   towerBtnTarget: { fontSize: 10, color: '#5a7080', marginTop: 1 },
   towerBtnTargetActive: { color: '#cfe9dc' },
   towerBtnTextDisabled: { color: '#3a4858' },
+
+  // ── In-level upgrade panel ────────────────────────────────────────────────
+  upgradePanelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  upgradePanelTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#c8d8e8',
+    letterSpacing: 0.3,
+    flexShrink: 1,
+  },
+  upgradePanelClose: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  upgradePanelCloseText: { fontSize: 13, color: '#8a9db8' },
+  upgradeStatsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  upgradeStatChip: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#8fe0c0',
+    backgroundColor: 'rgba(143,224,192,0.1)',
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+  },
+  upgradeBtnRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  upgradeBtn: {
+    flex: 1,
+    backgroundColor: '#0e2233',
+    borderWidth: 1,
+    borderColor: '#2d6a9f',
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    gap: 2,
+    minHeight: 70,
+    justifyContent: 'center',
+  },
+  upgradeBtnMaxed: {
+    backgroundColor: '#1a2812',
+    borderColor: '#4caf50',
+  },
+  upgradeBtnDisabled: {
+    opacity: 0.45,
+  },
+  upgradeBtnEmoji: { fontSize: 20 },
+  upgradeBtnLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#d8e8f0',
+    letterSpacing: 0.3,
+  },
+  upgradeBtnLabelMaxed: { color: '#81c784' },
+  upgradeBtnLabelDisabled: { color: '#3a4858' },
+  upgradeBtnCost: { fontSize: 11, fontWeight: '600', color: '#f5c842' },
+  upgradeBtnStacks: { fontSize: 10, color: '#5a7080' },
+  upgradeBtnMaxedBadge: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#81c784',
+    letterSpacing: 0.8,
+  },
 
   overlay: {
     ...StyleSheet.absoluteFillObject,

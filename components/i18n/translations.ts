@@ -43,6 +43,11 @@ export interface Translations {
   backToMenu: string;
   finalScore: string;
 
+  // Tower upgrade panel (in-level temporary upgrades)
+  towerUpgradeTitle: string;
+  towerUpgradeDismissA11y: string;
+  towerUpgradeMaxed: string;
+
   // Accessibility labels (no emoji, action-oriented)
   startGameA11y: string;
   openSettingsA11y: string;
@@ -87,6 +92,10 @@ const en: Translations = {
   towerTargetAll: '⚔️+✈️ All',
   towerTargetGround: '⚔️ Ground',
   towerTargetAir: '✈️ Air',
+
+  towerUpgradeTitle: 'Upgrade Tower',
+  towerUpgradeDismissA11y: 'Close upgrade panel',
+  towerUpgradeMaxed: 'MAXED',
 
   gameOverTitle: 'GAME OVER',
   victoryTitle: 'VICTORY!',
@@ -138,6 +147,10 @@ const de: Translations = {
   towerTargetGround: '⚔️ Boden',
   towerTargetAir: '✈️ Luft',
 
+  towerUpgradeTitle: 'Turm aufwerten',
+  towerUpgradeDismissA11y: 'Aufwertungspanel schließen',
+  towerUpgradeMaxed: 'MAX',
+
   gameOverTitle: 'NIEDERLAGE',
   victoryTitle: 'SIEG!',
   playAgain: 'Nochmal spielen',
@@ -187,6 +200,10 @@ const fr: Translations = {
   towerTargetAll: '⚔️+✈️ Tous',
   towerTargetGround: '⚔️ Sol',
   towerTargetAir: '✈️ Air',
+
+  towerUpgradeTitle: 'Améliorer la tour',
+  towerUpgradeDismissA11y: 'Fermer le panneau d\'amélioration',
+  towerUpgradeMaxed: 'MAX',
 
   gameOverTitle: 'DÉFAITE',
   victoryTitle: 'VICTOIRE !',

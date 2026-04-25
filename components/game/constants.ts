@@ -55,3 +55,30 @@ export const WAVE_BREAK_MS = 4000; // pause between waves
 
 export const TOTAL_WAVES = 5;
 export const ENEMIES_PER_WAVE = 10;
+
+// ── Temporary in-level upgrades ────────────────────────────────────────────
+export interface InLevelUpgradeConfig {
+  /** Gold cost per purchase. */
+  cost: number;
+  /** Maximum number of times a single tower can buy this upgrade. */
+  maxStacks: number;
+  emoji: string;
+  /** Short button label shown in the upgrade panel. */
+  label: string;
+  /** Flat damage added per stack. */
+  damageBonus: number;
+  /** Attack radius added in grid cells per stack. */
+  rangeBonus: number;
+  /** Cooldown reduced in ms per stack (clamped to minimum 200 ms). */
+  cooldownReduction: number;
+}
+
+export const IN_LEVEL_UPGRADE_CONFIG: Record<InLevelUpgradeType, InLevelUpgradeConfig> = {
+  /** Damage upgrade – increases flat damage per shot. */
+  damage_boost: { cost: 40, maxStacks: 3, emoji: '⚔️', label: '+DMG',  damageBonus: 8, rangeBonus: 0,   cooldownReduction: 0   },
+  /** Range upgrade – increases attack radius. */
+  range_boost:  { cost: 40, maxStacks: 3, emoji: '🔭', label: '+RNG',  damageBonus: 0, rangeBonus: 0.5, cooldownReduction: 0   },
+  /** Speed upgrade – reduces attack cooldown. */
+  speed_boost:  { cost: 50, maxStacks: 3, emoji: '⚡', label: '+SPD',  damageBonus: 0, rangeBonus: 0,   cooldownReduction: 150 },
+};
+
