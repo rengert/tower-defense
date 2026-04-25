@@ -49,6 +49,51 @@ describe('progression', () => {
     expect(upgraded.coins).toBe(999 - getUpgradeCost(0));
     expect(effective.archer.damage).toBeGreaterThan(getEffectiveTowerStats(DEFAULT_META_PROFILE).archer.damage);
   });
+
+  it('applies first-clear bonus only once per level', () => {
+    const first = applyRunResult(DEFAULT_META_PROFILE, {
+      won: true,
+      level: 1,
+      enemiesKilled: 5,
+      wavesSurvived: 3,
+    });
+    const second = applyRunResult(first, {
+      won: true,
+      level: 1,
+      enemiesKilled: 5,
+      wavesSurvived: 3,
+    });
+
+    const firstDelta = first.coins - DEFAULT_META_PROFILE.coins;
+    const secondDelta = second.coins - first.coins;
+    expect(first.firstClearLevels).toContain(1);
+    expect(firstDelta).toBeGreaterThan(secondDelta);
+  });
+
+  it('builds and resets win streak based on outcome', () => {
+    const win1 = applyRunResult(DEFAULT_META_PROFILE, {
+      won: true,
+      level: 1,
+      enemiesKilled: 5,
+      wavesSurvived: 2,
+    });
+    const win2 = applyRunResult(win1, {
+      won: true,
+      level: 2,
+      enemiesKilled: 6,
+      wavesSurvived: 2,
+    });
+    const loss = applyRunResult(win2, {
+      won: false,
+      level: 2,
+      enemiesKilled: 2,
+      wavesSurvived: 1,
+    });
+
+    expect(win2.winStreak).toBeGreaterThan(win1.winStreak);
+    expect(win2.bestWinStreak).toBe(win2.winStreak);
+    expect(loss.winStreak).toBe(0);
+  });
 });
 
 

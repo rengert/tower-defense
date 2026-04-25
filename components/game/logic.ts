@@ -50,13 +50,13 @@ export function getLevelDifficulty(level: number): LevelDifficulty {
   const safeLevel = Math.max(1, Math.floor(level));
   return {
     level: safeLevel,
-    enemyHealthMultiplier: 1 + (safeLevel - 1) * 0.18,
-    groundSpeedMultiplier: 1 + (safeLevel - 1) * 0.045,
-    airSpeedMultiplier: 1 + (safeLevel - 1) * 0.055,
-    spawnIntervalMs: Math.max(900, SPAWN_INTERVAL_MS - (safeLevel - 1) * 60),
+    enemyHealthMultiplier: 1 + (safeLevel - 1) * 0.2,
+    groundSpeedMultiplier: 1 + (safeLevel - 1) * 0.05,
+    airSpeedMultiplier: 1 + (safeLevel - 1) * 0.06,
+    spawnIntervalMs: Math.max(850, SPAWN_INTERVAL_MS - (safeLevel - 1) * 70),
     enemiesPerWave: ENEMIES_PER_WAVE + Math.floor((safeLevel - 1) / 2),
-    totalWaves: TOTAL_WAVES + Math.floor((safeLevel - 1) / 3),
-    waveBreakMs: Math.max(1200, WAVE_BREAK_MS - (safeLevel - 1) * 120),
+    totalWaves: TOTAL_WAVES + Math.floor((safeLevel - 1) / 2),
+    waveBreakMs: Math.max(1100, WAVE_BREAK_MS - (safeLevel - 1) * 130),
   };
 }
 
@@ -482,7 +482,7 @@ export function tickGame(
     gold, lives, wave, enemiesSpawned, enemiesKilled,
     elapsedMs, lastSpawnMs, nextEnemyId, nextTowerId, nextProjectileId,
   } = prev;
-  let status: GameState['status'] = prev.status;
+  let status: 'playing' | 'won' | 'lost' = 'playing';
 
   elapsedMs += dtMs;
 

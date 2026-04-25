@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
 import App from '../App';
-import { STARTING_GOLD, STARTING_LIVES, TOWER_STATS } from '../components/game/constants';
+import { STARTING_GOLD, STARTING_LIVES, TOTAL_WAVES, TOWER_STATS } from '../components/game/constants';
 
 // PixiGameRenderer uses expo-gl / pixi.js (WebGL) which is unavailable in Jest.
 // The manual mock at components/__mocks__/PixiGameRenderer.tsx replaces it with
@@ -109,7 +109,7 @@ describe('GameScreen HUD', () => {
   });
 
   it('shows wave counter in the HUD', () => {
-    expect(screen.getByText('1/3')).toBeTruthy();
+    expect(screen.getByText(`1/${TOTAL_WAVES}`)).toBeTruthy();
   });
 });
 
