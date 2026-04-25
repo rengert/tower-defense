@@ -44,17 +44,9 @@ export default function StartMenuScreen({
   };
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.container}
-      horizontal={false}
-      alwaysBounceHorizontal={false}
-      bounces={false}
-      showsHorizontalScrollIndicator={false}
-    >
-      <View style={styles.content}>
+    <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.heroSection}>
-        <Text style={styles.towerIcon}>🗼</Text>
+        <Text style={styles.towerIcon}></Text>
         <Text style={styles.title}>TOWER{`\n`}DEFENSE</Text>
         <View style={styles.divider} />
         <Text style={styles.subtitle}>{t.startMenuSubtitle}</Text>
@@ -88,7 +80,7 @@ export default function StartMenuScreen({
 
       <View style={styles.metaRow}>
         <Text style={styles.metaLabel}>{t.gold}</Text>
-        <Text style={styles.coinsValue}>{profile.coins} 💰</Text>
+        <Text style={styles.coinsValue}>{profile.coins} </Text>
       </View>
 
       <View style={styles.actionSection}>
@@ -132,7 +124,7 @@ export default function StartMenuScreen({
                     accessibilityRole="button"
                     accessibilityLabel={`Unlock ${towerName(towerType)}`}
                   >
-                    <Text style={styles.unlockButtonText}>Unlock {unlockCost} 💰</Text>
+                    <Text style={styles.unlockButtonText}>Unlock {unlockCost} </Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -158,7 +150,7 @@ export default function StartMenuScreen({
                         accessibilityLabel={`${towerName(towerType)} ${statLabel(stat)} upgrade`}
                       >
                         <Text style={styles.upgradeButtonTitle}>{statLabel(stat)} L{level}</Text>
-                        <Text style={styles.upgradeButtonCost}>{level >= 8 ? 'MAX' : `${cost} 💰`}</Text>
+                        <Text style={styles.upgradeButtonCost}>{level >= 8 ? 'MAX' : `${cost} `}</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -168,27 +160,19 @@ export default function StartMenuScreen({
           );
         })}
       </View>
-      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: {
+  container: {
     flex: 1,
     backgroundColor: '#0d1017',
-  },
-  container: {
-    flexGrow: 1,
+    alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingHorizontal: 14,
+    paddingHorizontal: 32,
     paddingTop: 30,
     paddingBottom: 40,
-  },
-  content: {
-    width: '100%',
-    maxWidth: 560,
-    alignSelf: 'center',
   },
   heroSection: {
     alignItems: 'center',
@@ -367,19 +351,17 @@ const styles = StyleSheet.create({
   },
   upgradeRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    gap: 8,
     marginTop: 10,
   },
   upgradeButton: {
-    width: '31%',
+    flex: 1,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: 'rgba(245,200,66,0.35)',
     backgroundColor: 'rgba(245,200,66,0.08)',
     paddingVertical: 7,
     alignItems: 'center',
-    marginBottom: 8,
   },
   upgradeButtonDisabled: {
     opacity: 0.35,

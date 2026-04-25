@@ -84,7 +84,6 @@ export default function GameScreen({
       const next = placeTower(prev, row, col, buildTowerType, effectiveTowerStats);
       if (next !== prev) {
         gameRef.current = next;
-        setBuildTowerType(null);
         syncHudState(prev, next);
       }
     },
