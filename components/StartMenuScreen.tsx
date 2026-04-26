@@ -83,6 +83,25 @@ export default function StartMenuScreen({
         <Text style={styles.coinsValue}>{profile.coins} </Text>
       </View>
 
+      <View style={styles.motivationPanel}>
+        <Text style={styles.motivationTitle}>{t.motivationTitle}</Text>
+        <View style={styles.motivationStatsRow}>
+          <View style={styles.motivationStatCard}>
+            <Text style={styles.motivationStatLabel}>{t.currentStreakLabel}</Text>
+            <Text style={styles.motivationStatValue}>🔥 {profile.winStreak}</Text>
+          </View>
+          <View style={styles.motivationStatCard}>
+            <Text style={styles.motivationStatLabel}>{t.bestStreakLabel}</Text>
+            <Text style={styles.motivationStatValue}>🏆 {profile.bestWinStreak}</Text>
+          </View>
+          <View style={styles.motivationStatCard}>
+            <Text style={styles.motivationStatLabel}>{t.firstClearsLabel}</Text>
+            <Text style={styles.motivationStatValue}>⭐ {profile.firstClearLevels.length}</Text>
+          </View>
+        </View>
+        <Text style={styles.motivationHint}>{t.streakHint}</Text>
+      </View>
+
       <View style={styles.actionSection}>
         <TouchableOpacity
           style={styles.startButton}
@@ -305,6 +324,51 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 12,
     backgroundColor: 'rgba(19,24,37,0.65)',
+  },
+  motivationPanel: {
+    width: '100%',
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(245,200,66,0.16)',
+    borderRadius: 16,
+    padding: 10,
+    backgroundColor: 'rgba(19,24,37,0.65)',
+  },
+  motivationTitle: {
+    color: '#f5c842',
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 8,
+  },
+  motivationStatsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  motivationStatCard: {
+    flex: 1,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,200,66,0.22)',
+    alignItems: 'center',
+  },
+  motivationStatLabel: {
+    color: '#8aa2b2',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  motivationStatValue: {
+    marginTop: 2,
+    color: '#d8e8f0',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  motivationHint: {
+    marginTop: 8,
+    color: '#5a7080',
+    fontSize: 11,
   },
   panelTitle: {
     color: '#f5c842',

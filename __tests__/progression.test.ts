@@ -4,9 +4,11 @@ import {
   calculateRunReward,
   getEffectiveTowerStats,
   getUpgradeCost,
+  loadMetaProfile,
   purchaseTowerUnlock,
   upgradeTowerStat,
 } from '../components/game/progression';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn().mockResolvedValue(null),
@@ -93,6 +95,50 @@ describe('progression', () => {
     expect(win2.winStreak).toBeGreaterThan(win1.winStreak);
     expect(win2.bestWinStreak).toBe(win2.winStreak);
     expect(loss.winStreak).toBe(0);
+  });
+
+  it('adds first-clear and streak bonus coins on wins', () => {
+    const firstWin = applyRunResult(DEFAULT_META_PROFILE, {
+      won: true,
+      level: 2,
+      enemiesKilled: 8,
+      wavesSurvived: 3,
+    });
+    const baseReward = calculateRunReward({
+      won: true,
+      level: 2,
+      enemiesKilled: 8,
+      wavesSurvived: 3,
+    });
+    expect(firstWin.coins).toBeGreaterThan(baseReward);
+
+    const secondWinSameLevel = applyRunResult(firstWin, {
+      won: true,
+      level: 2,
+      enemiesKilled: 8,
+      wavesSurvived: 3,
+    });
+    const secondDelta = secondWinSameLevel.coins - firstWin.coins;
+    expect(secondDelta).toBeGreaterThan(baseReward);
+  });
+
+  it('migrates old stored profiles and fills motivation defaults', async () => {
+    const mockedStorage = AsyncStorage as jest.Mocked<typeof AsyncStorage>;
+    mockedStorage.getItem.mockResolvedValueOnce(
+      JSON.stringify({
+        coins: 120,
+        highestLevelUnlocked: 3,
+        unlockedTowers: { archer: true, cannon: true },
+      })
+    );
+
+    const loaded = await loadMetaProfile();
+    expect(loaded.coins).toBe(120);
+    expect(loaded.highestLevelUnlocked).toBe(3);
+    expect(loaded.unlockedTowers.cannon).toBe(true);
+    expect(loaded.winStreak).toBe(0);
+    expect(loaded.bestWinStreak).toBe(0);
+    expect(loaded.firstClearLevels).toEqual([]);
   });
 });
 

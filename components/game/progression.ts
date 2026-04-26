@@ -17,6 +17,12 @@ export interface MetaProfile {
   highestLevelUnlocked: number;
   unlockedTowers: Record<TowerType, boolean>;
   upgrades: Record<TowerType, TowerUpgradeState>;
+  /** Consecutive wins without a loss. */
+  winStreak: number;
+  /** Highest consecutive win streak achieved. */
+  bestWinStreak: number;
+  /** Levels that were cleared at least once (for one-time bonuses). */
+  firstClearLevels: number[];
 }
 
 export interface RunResult {
@@ -45,6 +51,9 @@ export const DEFAULT_META_PROFILE: MetaProfile = {
     cannon: { ...DEFAULT_TOWER_UPGRADE },
     magic: { ...DEFAULT_TOWER_UPGRADE },
   },
+  winStreak: 0,
+  bestWinStreak: 0,
+  firstClearLevels: [],
 };
 
 export const TOWER_UNLOCK_COST: Record<TowerType, number> = {
@@ -54,6 +63,57 @@ export const TOWER_UNLOCK_COST: Record<TowerType, number> = {
 };
 
 const UPGRADE_CAP = 8;
+const FIRST_CLEAR_BASE_BONUS = 100;
+const FIRST_CLEAR_LEVEL_BONUS = 25;
+const STREAK_BONUS_PER_WIN = 12;
+const STREAK_BONUS_CAP = 140;
+
+function normalizeNumber(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function normalizeFirstClearLevels(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+  const unique = new Set<number>();
+  for (const rawLevel of value) {
+    if (typeof rawLevel !== 'number' || !Number.isFinite(rawLevel)) continue;
+    unique.add(Math.max(1, Math.floor(rawLevel)));
+  }
+  return Array.from(unique).sort((a, b) => a - b);
+}
+
+function normalizeMetaProfile(parsed: Partial<MetaProfile>): MetaProfile {
+  const normalizedWinStreak = Math.max(0, Math.floor(normalizeNumber(parsed.winStreak, 0)));
+  const normalizedBestStreak = Math.max(
+    normalizedWinStreak,
+    Math.floor(normalizeNumber(parsed.bestWinStreak, 0))
+  );
+
+  return {
+    ...DEFAULT_META_PROFILE,
+    ...parsed,
+    unlockedTowers: {
+      ...DEFAULT_META_PROFILE.unlockedTowers,
+      ...(parsed.unlockedTowers ?? {}),
+    },
+    upgrades: {
+      archer: { ...DEFAULT_TOWER_UPGRADE, ...(parsed.upgrades?.archer ?? {}) },
+      cannon: { ...DEFAULT_TOWER_UPGRADE, ...(parsed.upgrades?.cannon ?? {}) },
+      magic: { ...DEFAULT_TOWER_UPGRADE, ...(parsed.upgrades?.magic ?? {}) },
+    },
+    winStreak: normalizedWinStreak,
+    bestWinStreak: normalizedBestStreak,
+    firstClearLevels: normalizeFirstClearLevels(parsed.firstClearLevels),
+  };
+}
+
+function getFirstClearBonus(level: number): number {
+  return FIRST_CLEAR_BASE_BONUS + level * FIRST_CLEAR_LEVEL_BONUS;
+}
+
+function getStreakBonus(nextWinStreak: number): number {
+  return Math.min(STREAK_BONUS_CAP, Math.max(0, nextWinStreak) * STREAK_BONUS_PER_WIN);
+}
 
 export function getUpgradeCost(level: number): number {
   return 60 + level * 45;
@@ -64,19 +124,7 @@ export function loadMetaProfile(): Promise<MetaProfile> {
     .then((raw) => {
       if (!raw) return DEFAULT_META_PROFILE;
       const parsed = JSON.parse(raw) as Partial<MetaProfile>;
-      return {
-        ...DEFAULT_META_PROFILE,
-        ...parsed,
-        unlockedTowers: {
-          ...DEFAULT_META_PROFILE.unlockedTowers,
-          ...(parsed.unlockedTowers ?? {}),
-        },
-        upgrades: {
-          archer: { ...DEFAULT_TOWER_UPGRADE, ...(parsed.upgrades?.archer ?? {}) },
-          cannon: { ...DEFAULT_TOWER_UPGRADE, ...(parsed.upgrades?.cannon ?? {}) },
-          magic: { ...DEFAULT_TOWER_UPGRADE, ...(parsed.upgrades?.magic ?? {}) },
-        },
-      };
+      return normalizeMetaProfile(parsed);
     })
     .catch(() => DEFAULT_META_PROFILE);
 }
@@ -170,14 +218,23 @@ export function calculateRunReward(result: RunResult): number {
 
 export function applyRunResult(profile: MetaProfile, result: RunResult): MetaProfile {
   const reward = calculateRunReward(result);
+  const isFirstClearWin = result.won && !profile.firstClearLevels.includes(result.level);
+  const nextWinStreak = result.won ? profile.winStreak + 1 : 0;
+  const streakBonus = result.won ? getStreakBonus(nextWinStreak) : 0;
+  const firstClearBonus = isFirstClearWin ? getFirstClearBonus(result.level) : 0;
   const unlockedNext = result.won && result.level >= profile.highestLevelUnlocked
     ? profile.highestLevelUnlocked + 1
     : profile.highestLevelUnlocked;
+  const nextFirstClearLevels = isFirstClearWin
+    ? [...profile.firstClearLevels, result.level]
+    : profile.firstClearLevels;
 
   return {
     ...profile,
-    coins: profile.coins + reward,
+    coins: profile.coins + reward + streakBonus + firstClearBonus,
     highestLevelUnlocked: unlockedNext,
+    winStreak: nextWinStreak,
+    bestWinStreak: Math.max(profile.bestWinStreak, nextWinStreak),
+    firstClearLevels: nextFirstClearLevels,
   };
 }
-

@@ -6,6 +6,11 @@ export interface Translations {
   startButton: string;
   startHint: string;
   settingsButton: string;
+  motivationTitle: string;
+  currentStreakLabel: string;
+  bestStreakLabel: string;
+  firstClearsLabel: string;
+  streakHint: string;
 
   // Settings screen
   settingsTitle: string;
@@ -67,6 +72,11 @@ const en: Translations = {
   startButton: '▶ Start Game',
   startHint: 'Place towers · Survive waves · Defend your base',
   settingsButton: '⚙ Settings',
+  motivationTitle: 'Long-Term Motivation',
+  currentStreakLabel: 'Current Streak',
+  bestStreakLabel: 'Best Streak',
+  firstClearsLabel: 'First Clears',
+  streakHint: 'Win in a row for bonus coins. First win per level grants an extra bonus.',
 
   settingsTitle: 'SETTINGS',
   languageLabel: 'Language',
@@ -121,6 +131,11 @@ const de: Translations = {
   startButton: '▶ Spiel starten',
   startHint: 'Türme bauen · Wellen überleben · Basis verteidigen',
   settingsButton: '⚙ Einstellungen',
+  motivationTitle: 'Langzeit-Motivation',
+  currentStreakLabel: 'Aktuelle Serie',
+  bestStreakLabel: 'Beste Serie',
+  firstClearsLabel: 'Erstabschlüsse',
+  streakHint: 'Siege in Folge geben Bonus-Münzen. Der erste Sieg pro Level bringt Extra-Belohnung.',
 
   settingsTitle: 'EINSTELLUNGEN',
   languageLabel: 'Sprache',
@@ -175,6 +190,11 @@ const fr: Translations = {
   startButton: '▶ Jouer',
   startHint: 'Placez des tours · Survivez aux vagues · Défendez votre base',
   settingsButton: '⚙ Paramètres',
+  motivationTitle: 'Motivation à long terme',
+  currentStreakLabel: 'Série actuelle',
+  bestStreakLabel: 'Meilleure série',
+  firstClearsLabel: 'Premiers clears',
+  streakHint: 'Des victoires consécutives donnent des pièces bonus. Le premier succès par niveau donne un bonus.',
 
   settingsTitle: 'PARAMÈTRES',
   languageLabel: 'Langue',
